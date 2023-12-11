@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Typography,
   Box,
@@ -9,6 +9,7 @@ import {
   TableRow,
   TextField,
   Button,
+  TablePagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -39,6 +40,13 @@ const BillsTable = () => {
   ]);
 
   const [editIndex, setEditIndex] = useState(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(data.length);
+
+  useEffect(() => {
+    setTotalItems(data.length);
+  }, [data]);
 
   const handleEditClick = (index) => {
     setEditIndex(index);
@@ -91,6 +99,15 @@ const BillsTable = () => {
     const updatedData = [...data];
     updatedData[editIndex][key] = event.target.value;
     setData(updatedData);
+  };
+
+  const handlePageChange = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleRowsPerPage = (event) => {
+    setRowsPerPage(+event.target.value);
+    setPage(0);
   };
 
   return (
@@ -161,7 +178,7 @@ const BillsTable = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((row, index) => (
+            {data.slice(page * rowsPerPage, (page + 1) * rowsPerPage).map((row, index) => (
               <TableRow key={row.id}>
                 <TableCell>{row.id}</TableCell>
                 <TableCell>
@@ -270,6 +287,15 @@ const BillsTable = () => {
             ))}
           </TableBody>
         </Table>
+        <TablePagination
+          rowsPerPageOptions={[10, 15, 25]}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          component="div"
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPage}
+          count={totalItems}
+        />
       </Box>
     </DashboardCard>
   );
