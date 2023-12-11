@@ -87,6 +87,12 @@ const BillsTable = () => {
     setData(updatedData);
   };
 
+  const handleTextChange = (event, key) => {
+    const updatedData = [...data];
+    updatedData[editIndex][key] = event.target.value;
+    setData(updatedData);
+  };
+
   return (
     <DashboardCard>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -172,23 +178,22 @@ const BillsTable = () => {
                   )}
                 </TableCell>
                 <TableCell>
-                {editIndex === index ? (
-                  <TextField
-                    type="number"
-                    value={row.billPaid}
-                    onChange={(e) => handleNumericChange(e, 'billPaid')}
-                  />
-                ) : (
-                  row.billPaid
-                )}
+                  {editIndex === index ? (
+                    <TextField
+                      value={row.billPaid}
+                      onChange={(e) => handleTextChange(e, 'billPaid')}
+                    />
+                  ) : (
+                    row.billPaid
+                  )}
                 </TableCell>
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
-                    type="number"
-                    value={row.amount}
-                    onChange={(e) => handleNumericChange(e, 'amount')}
-                  />
+                      type="number"
+                      value={row.amount}
+                      onChange={(e) => handleNumericChange(e, 'amount')}
+                    />
                   ) : (
                     row.amount
                   )}
@@ -196,9 +201,9 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
-                    type="number"
-                    value={row.totalDebt}
-                    onChange={(e) => handleNumericChange(e, 'totalDebt')}
+                      type="number"
+                      value={row.totalDebt}
+                      onChange={(e) => handleNumericChange(e, 'totalDebt')}
                     />
                   ) : (
                     row.totalDebt
@@ -207,9 +212,9 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
-                    type="number"
-                    value={row.actualDebt}
-                    onChange={(e) => handleNumericChange(e, 'actualDebt')}
+                      type="number"
+                      value={row.actualDebt}
+                      onChange={(e) => handleNumericChange(e, 'actualDebt')}
                     />
                   ) : (
                     row.actualDebt
@@ -218,9 +223,9 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
-                    type="number"
-                    value={row.totalBalance}
-                    onChange={(e) => handleNumericChange(e, 'totalBalance')}
+                      type="number"
+                      value={row.totalBalance}
+                      onChange={(e) => handleNumericChange(e, 'totalBalance')}
                     />
                   ) : (
                     row.totalBalance
@@ -229,9 +234,9 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
-                    type="number"
-                    value={row.remainingAmount}
-                    onChange={(e) => handleNumericChange(e, 'remainingAmount')}
+                      type="number"
+                      value={row.remainingAmount}
+                      onChange={(e) => handleNumericChange(e, 'remainingAmount')}
                     />
                   ) : (
                     row.remainingAmount
@@ -240,9 +245,9 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
-                    type="number"
-                    value={row.gap}
-                    onChange={(e) => handleNumericChange(e, 'gap')}
+                      type="number"
+                      value={row.gap}
+                      onChange={(e) => handleNumericChange(e, 'gap')}
                     />
                   ) : (
                     row.gap
