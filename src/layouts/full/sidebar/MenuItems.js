@@ -1,5 +1,5 @@
 import {
-  IconAperture, IconCopy, IconLayoutDashboard, IconLogin, IconMoodHappy, IconTypography, IconUserPlus
+  IconAperture, IconCopy, IconLayoutDashboard, IconLogin, IconMoodHappy, IconTypography, IconUserPlus, IconReceipt
 } from '@tabler/icons';
 
 import { uniqueId } from 'lodash';
@@ -9,12 +9,21 @@ const Menuitems = [
     navlabel: true,
     subheader: 'Home',
   },
-
   {
     id: uniqueId(),
     title: 'Dashboard',
     icon: IconLayoutDashboard,
     href: '/dashboard',
+  },
+  {
+    navlabel: true,
+    subheader: 'Save Money',
+  },
+  {
+    id: uniqueId(),
+    title: 'Bills',
+    icon: IconReceipt,
+    href: '/bills',
   },
   {
     navlabel: true,

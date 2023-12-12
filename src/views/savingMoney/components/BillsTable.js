@@ -43,6 +43,8 @@ const BillsTable = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(data.length);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setTotalItems(data.length);
@@ -50,10 +52,12 @@ const BillsTable = () => {
 
   const handleEditClick = (index) => {
     setEditIndex(index);
+    setAdding(false);
   };
 
   const handleSaveClick = (index) => {
     setEditIndex(null);
+    setSaving(true);
   };
 
   const handleAddClick = () => {
@@ -72,6 +76,32 @@ const BillsTable = () => {
       },
     ]);
     setEditIndex(data.length);
+    setAdding(true);
+  };
+
+  const handleCancelButton = (index) => {
+    if (adding) {
+      const updatedData = [...data];
+      updatedData.splice(index, 1);
+      setData(updatedData);
+    } else {
+      setEditIndex(null);
+      if (!saving) {
+        setData(() => [
+          {
+            id: data.length + 1,
+            date: new Date(),
+            billPaid: '',
+            amount: '',
+            totalDebt: '',
+            actualDebt: '',
+            totalBalance: '',
+            remainingAmount: '',
+            gap: '',
+          },
+        ]);
+      }
+    }
   };
 
   const handleDeleteClick = (index) => {
@@ -89,7 +119,7 @@ const BillsTable = () => {
   };
 
   const handleNumericChange = (e, key) => {
-    const value = e.target.value.replace(/[^0-9]/g, '');
+    const value = e.target.value.replace(/[^0-9.]/g, ' ');
     const updatedData = [...data];
     updatedData[editIndex][key] = value;
     setData(updatedData);
@@ -114,7 +144,7 @@ const BillsTable = () => {
     <DashboardCard>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6" fontWeight={600}>
-          Bills
+          Mothly Bills
         </Typography>
         <Button startIcon={<AddIcon />} sx={{ ml: 2 }} onClick={handleAddClick} />
       </Box>
@@ -274,7 +304,7 @@ const BillsTable = () => {
                   {editIndex === index ? (
                     <>
                       <Button startIcon={<SaveIcon />} onClick={() => handleSaveClick(index)} />
-                      <Button startIcon={<CloseIcon />} onClick={() => setEditIndex(null)} />
+                      <Button startIcon={<CloseIcon />} onClick={() => handleCancelButton(index)} />
                     </>
                   ) : (
                     <>
