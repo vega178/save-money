@@ -29,7 +29,7 @@ const BillsTable = () => {
     {
       id: 1,
       date: new Date(),
-      billPaid: '',
+      name: '',
       amount: '',
       totalDebt: '',
       actualDebt: '',
@@ -66,7 +66,7 @@ const BillsTable = () => {
       {
         id: data.length + 1,
         date: new Date(),
-        billPaid: '',
+        name: '',
         amount: '',
         totalDebt: '',
         actualDebt: '',
@@ -91,7 +91,7 @@ const BillsTable = () => {
           {
             id: data.length + 1,
             date: new Date(),
-            billPaid: '',
+            name: '',
             amount: '',
             totalDebt: '',
             actualDebt: '',
@@ -172,7 +172,7 @@ const BillsTable = () => {
               </TableCell>
               <TableCell>
                 <Typography variant="subtitle2" fontWeight={600}>
-                  BILL PAID
+                  NAME
                 </Typography>
               </TableCell>
               <TableCell>
@@ -217,7 +217,7 @@ const BillsTable = () => {
                       <DatePicker
                         value={row.date}
                         onChange={(date) => handleDateChange(date, index)}
-                        renderInput={(params) => <TextField {...params} />}
+                        renderInput={(params) => <TextField {...params} style={{ width: '100px' }} />}
                       />
                     </LocalizationProvider>
                   ) : (
@@ -227,16 +227,18 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
-                      value={row.billPaid}
-                      onChange={(e) => handleTextChange(e, 'billPaid')}
+                      multiline
+                      value={row.name}
+                      onChange={(e) => handleTextChange(e, 'name')}
                     />
                   ) : (
-                    row.billPaid
+                    row.name
                   )}
                 </TableCell>
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
+                      multiline
                       type="number"
                       value={row.amount}
                       onChange={(e) => handleNumericChange(e, 'amount')}
@@ -248,6 +250,7 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
+                      multiline
                       type="number"
                       value={row.totalDebt}
                       onChange={(e) => handleNumericChange(e, 'totalDebt')}
@@ -259,6 +262,7 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
+                    multiline
                       type="number"
                       value={row.actualDebt}
                       onChange={(e) => handleNumericChange(e, 'actualDebt')}
@@ -270,6 +274,7 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
+                    multiline
                       type="number"
                       value={row.totalBalance}
                       onChange={(e) => handleNumericChange(e, 'totalBalance')}
@@ -281,6 +286,7 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
+                    multiline
                       type="number"
                       value={row.remainingAmount}
                       onChange={(e) => handleNumericChange(e, 'remainingAmount')}
@@ -292,6 +298,7 @@ const BillsTable = () => {
                 <TableCell>
                   {editIndex === index ? (
                     <TextField
+                    multiline
                       type="number"
                       value={row.gap}
                       onChange={(e) => handleNumericChange(e, 'gap')}
