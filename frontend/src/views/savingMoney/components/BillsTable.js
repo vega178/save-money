@@ -21,24 +21,12 @@ import {
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers';
-import DashboardCard from '../../../components/shared/DashboardCard';
 import { format } from 'date-fns';
+import DashboardCard from '../../../components/shared/DashboardCard';
+import { getBills } from "../../../services/billsServices";
 
 const BillsTable = () => {
-  const [data, setData] = useState([
-    {
-      id: 1,
-      date: new Date(),
-      name: '',
-      amount: '',
-      totalDebt: '',
-      actualDebt: '',
-      totalBalance: '',
-      remainingAmount: '',
-      gap: '',
-    },
-  ]);
-
+  const [data, setData] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -46,8 +34,18 @@ const BillsTable = () => {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const findAll = async() => {
+    const bills = await getBills();
+    const formattedBills = bills.map((bill) => ({
+      ...bill,
+      billDate: new Date(bill.billDate),
+    }));
+    setData(formattedBills);
+  }
+
   useEffect(() => {
     setTotalItems(data.length);
+    findAll();
   }, [data]);
 
   const handleEditClick = (index) => {
@@ -215,13 +213,13 @@ const BillsTable = () => {
                   {editIndex === index ? (
                     <LocalizationProvider dateAdapter={AdapterDateFns}>
                       <DatePicker
-                        value={row.date}
+                        value = {row.billDate}
                         onChange={(date) => handleDateChange(date, index)}
                         renderInput={(params) => <TextField {...params} style={{ width: '100px' }} />}
                       />
                     </LocalizationProvider>
                   ) : (
-                    format(row.date, 'yyyy-MM-dd')
+                    format(row.billDate, 'yyyy-MM-dd')
                   )}
                 </TableCell>
                 <TableCell>
