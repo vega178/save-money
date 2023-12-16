@@ -11,6 +11,7 @@ import {
   TextField,
   Button,
   TablePagination,
+  Checkbox,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -22,6 +23,8 @@ import {
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers';
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 import { format } from 'date-fns';
 import DashboardCard from '../../../components/shared/DashboardCard';
 import { getBills, create, update, remove } from '../../../services/billsServices';
@@ -62,7 +65,7 @@ const BillsTable = () => {
       await update(billToUpdate);
     }
     setEditIndex(null);
-    setSaving(false);
+    setSaving(true);
   };
 
   const handleAddClick = () => {
@@ -102,7 +105,6 @@ const BillsTable = () => {
           remainingAmount: '',
           gap: '',
         };
-
         await create(newBill);
         fetchData();
       }
@@ -147,6 +149,23 @@ const BillsTable = () => {
     setPage(0);
   };
 
+  const handleCheckboxChange = async (index) => {
+    const updatedData = [...data];
+    updatedData[index].isChecked = !updatedData[index].isChecked;
+    setData(updatedData);
+
+    try {
+      const billToUpdate = updatedData[index];
+      if (billToUpdate.id) {
+        await update(billToUpdate);
+      } else {
+        await create(billToUpdate);
+      }
+    } catch (error) {
+      console.error('Error updating checkbox state:', error);
+    }
+  };
+
   return (
     <DashboardCard>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -157,7 +176,10 @@ const BillsTable = () => {
       </Box>
       <Box sx={{ mt: 2, width: { xs: '280px', sm: 'auto' } }}>
         {data.length === 0 ? (
-          <Typography variant="body1">No bills data available.</Typography>
+          <Alert severity="warning">
+            <AlertTitle>Warning</AlertTitle>
+            No bills data available to show. <strong>please add a new one!</strong>
+          </Alert>
         ) : (
           <>
             <Table aria-label="simple table">
@@ -168,6 +190,9 @@ const BillsTable = () => {
                       <Typography variant="subtitle2" fontWeight={600}>
                         ID
                       </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight={600}></Typography>
                     </TableCell>
                     <TableCell>
                       <Typography variant="subtitle2" fontWeight={600}>
@@ -215,6 +240,12 @@ const BillsTable = () => {
                   {data.slice(page * rowsPerPage, (page + 1) * rowsPerPage).map((row, index) => (
                     <TableRow key={row.id}>
                       <TableCell>{row.id}</TableCell>
+                        <Checkbox
+                          style={{ color: 'green' }}
+                          checked={row.isChecked}
+                          onChange={() => handleCheckboxChange(index)}
+                          disabled={editIndex === index || adding}
+                        />
                       <TableCell>
                         {editIndex === index ? (
                           <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -313,31 +344,24 @@ const BillsTable = () => {
                           row.gap
                         )}
                       </TableCell>
-                      <TableCell>
-                        {editIndex === index ? (
-                          <>
-                            <Button
-                              startIcon={<SaveIcon />}
-                              onClick={() => handleSaveClick(index)}
-                            />
-                            <Button
-                              startIcon={<CloseIcon />}
-                              onClick={() => handleCancelButton(index)}
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <Button
-                              startIcon={<EditIcon />}
-                              onClick={() => handleEditClick(index)}
-                            />
-                            <Button
-                              startIcon={<DeleteIcon />}
-                              onClick={() => handleDeleteClick(index)}
-                            />
-                          </>
-                        )}
-                      </TableCell>
+                      {editIndex === index ? (
+                        <>
+                          <Button startIcon={<SaveIcon />} onClick={() => handleSaveClick(index)} />
+                          <Button
+                            startIcon={<CloseIcon />}
+                            onClick={() => handleCancelButton(index)}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Button startIcon={<EditIcon />} onClick={() => handleEditClick(index)} />
+                          <Button
+                            style={{ color: 'red' }}
+                            startIcon={<DeleteIcon />}
+                            onClick={() => handleDeleteClick(index)}
+                          />
+                        </>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

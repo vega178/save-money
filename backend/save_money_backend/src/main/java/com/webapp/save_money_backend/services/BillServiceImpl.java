@@ -47,6 +47,7 @@ public class BillServiceImpl implements BillService {
             billDb.setTotalBalance(bill.getTotalBalance());
             billDb.setRemainingAmount(bill.getRemainingAmount());
             billDb.setGap(bill.getGap());
+            billDb.setChecked(bill.getChecked());
             return Optional.of(this.save(billDb));
         }
         return Optional.empty();

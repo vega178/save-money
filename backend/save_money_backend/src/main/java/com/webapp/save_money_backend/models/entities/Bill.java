@@ -22,6 +22,7 @@ public class Bill {
     private Long totalBalance;
     private Long remainingAmount;
     private Long gap;
+    private Boolean isChecked;
 
     public Date getBillDate() {
         return billDate;
@@ -85,5 +86,13 @@ public class Bill {
 
     public void setGap(Long gap) {
         this.gap = gap;
+    }
+
+    public Boolean getChecked() {
+        return isChecked;
+    }
+
+    public void setChecked(Boolean checked) {
+        isChecked = checked;
     }
 }

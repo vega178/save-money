@@ -19,7 +19,8 @@ export const create = async({
   actualDebt,
   totalBalance,
   remainingAmount,
-  gap
+  gap,
+  isChecked
 }) => {
   try {
     return await axios.post(
@@ -32,7 +33,8 @@ export const create = async({
          actualDebt,
          totalBalance,
          remainingAmount,
-         gap
+         gap,
+         isChecked
       }
     );
   } catch (error) {
@@ -50,7 +52,8 @@ export const update = async({
   actualDebt,
   totalBalance,
   remainingAmount,
-  gap
+  gap,
+  isChecked
 }) => {
   try {
     return await axios.put(
@@ -63,7 +66,8 @@ export const update = async({
          actualDebt,
          totalBalance,
          remainingAmount,
-         gap
+         gap,
+         isChecked
       }
     );
   } catch (error) {
