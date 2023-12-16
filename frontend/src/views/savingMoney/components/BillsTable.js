@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
 import {
   Typography,
   Box,
@@ -23,61 +24,66 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers';
 import { format } from 'date-fns';
 import DashboardCard from '../../../components/shared/DashboardCard';
-import { getBills } from "../../../services/billsServices";
+import { getBills, create, update, remove } from '../../../services/billsServices';
 
 const BillsTable = () => {
   const [data, setData] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [totalItems, setTotalItems] = useState(data.length);
+  const [totalItems, setTotalItems] = useState(0);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const findAll = async() => {
+  const fetchData = async () => {
     const bills = await getBills();
-    const formattedBills = bills.map((bill) => ({
+    const formattedBills = bills.data.map((bill) => ({
       ...bill,
       billDate: new Date(bill.billDate),
     }));
     setData(formattedBills);
-  }
+    setTotalItems(formattedBills.length);
+  };
 
   useEffect(() => {
-    setTotalItems(data.length);
-    findAll();
-  }, [data]);
+    fetchData();
+  }, []);
 
   const handleEditClick = (index) => {
     setEditIndex(index);
     setAdding(false);
   };
 
-  const handleSaveClick = (index) => {
+  const handleSaveClick = async (index) => {
+    const billToUpdate = data[index];
+    if (adding) {
+      await create(billToUpdate);
+    } else {
+      await update(billToUpdate);
+    }
     setEditIndex(null);
-    setSaving(true);
+    setSaving(false);
   };
 
   const handleAddClick = () => {
-    setData((prevData) => [
-      ...prevData,
-      {
-        id: data.length + 1,
-        date: new Date(),
-        name: '',
-        amount: '',
-        totalDebt: '',
-        actualDebt: '',
-        totalBalance: '',
-        remainingAmount: '',
-        gap: '',
-      },
-    ]);
+    const newRow = {
+      id: data.length + 1,
+      billDate: new Date(),
+      name: '',
+      amount: '',
+      totalDebt: '',
+      actualDebt: '',
+      totalBalance: '',
+      remainingAmount: '',
+      gap: '',
+    };
+
+    setData((prevData) => [...prevData, newRow]);
     setEditIndex(data.length);
     setAdding(true);
   };
 
-  const handleCancelButton = (index) => {
+  const handleCancelButton = async (index) => {
     if (adding) {
       const updatedData = [...data];
       updatedData.splice(index, 1);
@@ -85,24 +91,27 @@ const BillsTable = () => {
     } else {
       setEditIndex(null);
       if (!saving) {
-        setData(() => [
-          {
-            id: data.length + 1,
-            date: new Date(),
-            name: '',
-            amount: '',
-            totalDebt: '',
-            actualDebt: '',
-            totalBalance: '',
-            remainingAmount: '',
-            gap: '',
-          },
-        ]);
+        const newBill = {
+          id: data.length + 1,
+          billDate: new Date(),
+          name: '',
+          amount: '',
+          totalDebt: '',
+          actualDebt: '',
+          totalBalance: '',
+          remainingAmount: '',
+          gap: '',
+        };
+
+        await create(newBill);
+        fetchData();
       }
     }
   };
 
-  const handleDeleteClick = (index) => {
+  const handleDeleteClick = async (index) => {
+    const billToDelete = data[index];
+    await remove(billToDelete.id);
     const updatedData = [...data];
     updatedData.splice(index, 1);
     setData(updatedData);
@@ -147,192 +156,214 @@ const BillsTable = () => {
         <Button startIcon={<AddIcon />} sx={{ ml: 2 }} onClick={handleAddClick} />
       </Box>
       <Box sx={{ mt: 2, width: { xs: '280px', sm: 'auto' } }}>
-        <Table
-          aria-label="simple table"
-          sx={{
-            whiteSpace: 'nowrap',
-            mt: 2,
-            minWidth: 600,
-            tableLayout: 'fixed',
-          }}
-        >
-          <TableHead>
-            <TableRow>
-              <TableCell>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  ID
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  DATE
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  NAME
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  AMOUNT
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  TOTAL DEBT
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  ACTUAL DEBT
-                </Typography>
-              </TableCell>
-              <TableCell align="right" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  TOTAL BALANCE
-                </Typography>
-              </TableCell>
-              <TableCell align="right" sx={{ whiteSpace: 'normal' }}>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  REMAINING AMOUNT
-                </Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  GAP
-                </Typography>
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {data.slice(page * rowsPerPage, (page + 1) * rowsPerPage).map((row, index) => (
-              <TableRow key={row.id}>
-                <TableCell>{row.id}</TableCell>
-                <TableCell>
-                  {editIndex === index ? (
-                    <LocalizationProvider dateAdapter={AdapterDateFns}>
-                      <DatePicker
-                        value = {row.billDate}
-                        onChange={(date) => handleDateChange(date, index)}
-                        renderInput={(params) => <TextField {...params} style={{ width: '100px' }} />}
-                      />
-                    </LocalizationProvider>
-                  ) : (
-                    format(row.billDate, 'yyyy-MM-dd')
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editIndex === index ? (
-                    <TextField
-                      multiline
-                      value={row.name}
-                      onChange={(e) => handleTextChange(e, 'name')}
-                    />
-                  ) : (
-                    row.name
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editIndex === index ? (
-                    <TextField
-                      multiline
-                      type="number"
-                      value={row.amount}
-                      onChange={(e) => handleNumericChange(e, 'amount')}
-                    />
-                  ) : (
-                    row.amount
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editIndex === index ? (
-                    <TextField
-                      multiline
-                      type="number"
-                      value={row.totalDebt}
-                      onChange={(e) => handleNumericChange(e, 'totalDebt')}
-                    />
-                  ) : (
-                    row.totalDebt
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editIndex === index ? (
-                    <TextField
-                    multiline
-                      type="number"
-                      value={row.actualDebt}
-                      onChange={(e) => handleNumericChange(e, 'actualDebt')}
-                    />
-                  ) : (
-                    row.actualDebt
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editIndex === index ? (
-                    <TextField
-                    multiline
-                      type="number"
-                      value={row.totalBalance}
-                      onChange={(e) => handleNumericChange(e, 'totalBalance')}
-                    />
-                  ) : (
-                    row.totalBalance
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editIndex === index ? (
-                    <TextField
-                    multiline
-                      type="number"
-                      value={row.remainingAmount}
-                      onChange={(e) => handleNumericChange(e, 'remainingAmount')}
-                    />
-                  ) : (
-                    row.remainingAmount
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editIndex === index ? (
-                    <TextField
-                    multiline
-                      type="number"
-                      value={row.gap}
-                      onChange={(e) => handleNumericChange(e, 'gap')}
-                    />
-                  ) : (
-                    row.gap
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editIndex === index ? (
-                    <>
-                      <Button startIcon={<SaveIcon />} onClick={() => handleSaveClick(index)} />
-                      <Button startIcon={<CloseIcon />} onClick={() => handleCancelButton(index)} />
-                    </>
-                  ) : (
-                    <>
-                      <Button startIcon={<EditIcon />} onClick={() => handleEditClick(index)} />
-                      <Button startIcon={<DeleteIcon />} onClick={() => handleDeleteClick(index)} />
-                    </>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[10, 15, 25]}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          component="div"
-          onPageChange={handlePageChange}
-          onRowsPerPageChange={handleRowsPerPage}
-          count={totalItems}
-        />
+        {data.length === 0 ? (
+          <Typography variant="body1">No bills data available.</Typography>
+        ) : (
+          <>
+            <Table aria-label="simple table">
+              <StyledTable>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        ID
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        DATE
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        NAME
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        AMOUNT
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        TOTAL DEBT
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        ACTUAL DEBT
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right" sx={{ whiteSpace: 'normal', wordWrap: 'break-word' }}>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        TOTAL BALANCE
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right" sx={{ whiteSpace: 'normal' }}>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        REMAINING AMOUNT
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        GAP
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {data.slice(page * rowsPerPage, (page + 1) * rowsPerPage).map((row, index) => (
+                    <TableRow key={row.id}>
+                      <TableCell>{row.id}</TableCell>
+                      <TableCell>
+                        {editIndex === index ? (
+                          <LocalizationProvider dateAdapter={AdapterDateFns}>
+                            <DatePicker
+                              value={row.billDate}
+                              onChange={(date) => handleDateChange(date, index)}
+                              renderInput={(params) => (
+                                <TextField {...params} style={{ width: '100px' }} />
+                              )}
+                            />
+                          </LocalizationProvider>
+                        ) : (
+                          format(row.billDate, 'yyyy-MM-dd')
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editIndex === index ? (
+                          <TextField
+                            multiline
+                            value={row.name}
+                            onChange={(e) => handleTextChange(e, 'name')}
+                          />
+                        ) : (
+                          row.name
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editIndex === index ? (
+                          <TextField
+                            multiline
+                            type="number"
+                            value={row.amount}
+                            onChange={(e) => handleNumericChange(e, 'amount')}
+                          />
+                        ) : (
+                          row.amount
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editIndex === index ? (
+                          <TextField
+                            multiline
+                            type="number"
+                            value={row.totalDebt}
+                            onChange={(e) => handleNumericChange(e, 'totalDebt')}
+                          />
+                        ) : (
+                          row.totalDebt
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editIndex === index ? (
+                          <TextField
+                            multiline
+                            type="number"
+                            value={row.actualDebt}
+                            onChange={(e) => handleNumericChange(e, 'actualDebt')}
+                          />
+                        ) : (
+                          row.actualDebt
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editIndex === index ? (
+                          <TextField
+                            multiline
+                            type="number"
+                            value={row.totalBalance}
+                            onChange={(e) => handleNumericChange(e, 'totalBalance')}
+                          />
+                        ) : (
+                          row.totalBalance
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editIndex === index ? (
+                          <TextField
+                            multiline
+                            type="number"
+                            value={row.remainingAmount}
+                            onChange={(e) => handleNumericChange(e, 'remainingAmount')}
+                          />
+                        ) : (
+                          row.remainingAmount
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editIndex === index ? (
+                          <TextField
+                            multiline
+                            type="number"
+                            value={row.gap}
+                            onChange={(e) => handleNumericChange(e, 'gap')}
+                          />
+                        ) : (
+                          row.gap
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editIndex === index ? (
+                          <>
+                            <Button
+                              startIcon={<SaveIcon />}
+                              onClick={() => handleSaveClick(index)}
+                            />
+                            <Button
+                              startIcon={<CloseIcon />}
+                              onClick={() => handleCancelButton(index)}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              startIcon={<EditIcon />}
+                              onClick={() => handleEditClick(index)}
+                            />
+                            <Button
+                              startIcon={<DeleteIcon />}
+                              onClick={() => handleDeleteClick(index)}
+                            />
+                          </>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </StyledTable>
+            </Table>
+            <TablePagination
+              rowsPerPageOptions={[10, 15, 25]}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              component="div"
+              onPageChange={handlePageChange}
+              onRowsPerPageChange={handleRowsPerPage}
+              count={totalItems}
+            />
+          </>
+        )}
       </Box>
     </DashboardCard>
   );
 };
+
+const StyledTable = styled(Table)`
+  white-space: nowrap;
+  mt: 2;
+  min-width: 600;
+  table-layout: fixed;
+`;
+
 export default BillsTable;
