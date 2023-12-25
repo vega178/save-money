@@ -71,7 +71,6 @@ const BillsTable = () => {
   };
 
   const handleAddClick = (index) => {
-   /* //todo1: Cuando se agrega una nueva pagina,no permite agregar nuevos items tampoco permite editarlos. Done , revisar handleTextChange para aplicarlos a los numeros y a la fecha si es necesario. 
     //TODO: Cuando se actualiza el valor y se selcciona guardar , no esta actualizando el valor si no que lo pasa vacioo al back y no lo actualiza.
     const newRow = {
       id: index + 1,
@@ -91,30 +90,7 @@ const BillsTable = () => {
     const currentPage = Math.floor(data.length / rowsPerPage);
     setAdding(true);
     setPage(currentPage);
-    setEditIndex(data.length); */
-    const newRowIndex = page * rowsPerPage + data.length;
-    setData((prevData) => [
-      ...prevData,
-      {
-        id: newRowIndex + 1,
-        billDate: new Date(),
-        name: '',
-        amount: '',
-        totalDebt: '',
-        actualDebt: '',
-        totalBalance: '',
-        remainingAmount: '',
-        gap: '',
-        editing: true,
-      },
-  ]);
-
-  setTotalItems((prevTotalItems) => prevTotalItems + 1);
-
-  const currentPage = Math.floor(newRowIndex / rowsPerPage);
-  setAdding(true);
-  setPage(currentPage);
-  setEditIndex(newRowIndex);
+    setEditIndex(data.length);
 };
   
 
@@ -182,15 +158,8 @@ const BillsTable = () => {
     });
   };
 
-  const handlePageChange = (event, newPage) => {
+  const handlePageChange = (newPage) => {
     setPage(newPage);
-    /*const newPageStartIndex = newPage * rowsPerPage;
-    const newPageEndIndex = (newPage + 1) * rowsPerPage;
-
-    if (editIndex !== null && (editIndex < newPageStartIndex || editIndex >= newPageEndIndex)) {
-      debugger;
-      setEditIndex(null);
-    }*/
   };
 
   const handleRowsPerPage = (event) => {
