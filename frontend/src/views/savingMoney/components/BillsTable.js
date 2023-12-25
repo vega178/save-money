@@ -62,13 +62,7 @@ const BillsTable = () => {
   const handleSaveClick = async (index) => {
     const billToUpdate = data[index];
     if (adding) {
-      const response = await create(billToUpdate);
-      setData((prevData) => {
-        const updatedData = [...prevData];
-        updatedData[index].id = response.data.id;
-        updatedData[index].counter = index + 1;
-        return updatedData;
-      });
+      await create(billToUpdate);
     } else {
       await update(billToUpdate);
     }
@@ -77,7 +71,8 @@ const BillsTable = () => {
   };
 
   const handleAddClick = (index) => {
-    //todo1: Cuando se agrega una nueva pagina,no permite agregar nuevos items tampoco permite editarlos.
+   /* //todo1: Cuando se agrega una nueva pagina,no permite agregar nuevos items tampoco permite editarlos. Done , revisar handleTextChange para aplicarlos a los numeros y a la fecha si es necesario. 
+    //TODO: Cuando se actualiza el valor y se selcciona guardar , no esta actualizando el valor si no que lo pasa vacioo al back y no lo actualiza.
     const newRow = {
       id: index + 1,
       billDate: new Date(),
@@ -91,12 +86,37 @@ const BillsTable = () => {
     };
 
     setData((prevData) => [...prevData, newRow]);
-    setEditIndex(data.length);
-    setAdding(true);
     setTotalItems(data.length + 1);
-    const newPage = Math.floor(data.length / rowsPerPage);
-    setPage(newPage);
-  }
+  
+    const currentPage = Math.floor(data.length / rowsPerPage);
+    setAdding(true);
+    setPage(currentPage);
+    setEditIndex(data.length); */
+    const newRowIndex = page * rowsPerPage + data.length;
+    setData((prevData) => [
+      ...prevData,
+      {
+        id: newRowIndex + 1,
+        billDate: new Date(),
+        name: '',
+        amount: '',
+        totalDebt: '',
+        actualDebt: '',
+        totalBalance: '',
+        remainingAmount: '',
+        gap: '',
+        editing: true,
+      },
+  ]);
+
+  setTotalItems((prevTotalItems) => prevTotalItems + 1);
+
+  const currentPage = Math.floor(newRowIndex / rowsPerPage);
+  setAdding(true);
+  setPage(currentPage);
+  setEditIndex(newRowIndex);
+};
+  
 
   const handleCancelButton = async (index) => {
     if (adding) {
@@ -151,13 +171,26 @@ const BillsTable = () => {
   };
 
   const handleTextChange = (event, key) => {
-    const updatedData = [...data];
-    updatedData[editIndex][key] = event.target.value;
-    setData(updatedData);
+  setData((prevData) => {
+      const updatedData = [...prevData];
+      const dataIndex = editIndex + page * rowsPerPage;
+      updatedData[dataIndex] = {
+        ...updatedData[dataIndex],
+        [key]: event.target.value,
+      };
+      return updatedData;
+    });
   };
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
+    /*const newPageStartIndex = newPage * rowsPerPage;
+    const newPageEndIndex = (newPage + 1) * rowsPerPage;
+
+    if (editIndex !== null && (editIndex < newPageStartIndex || editIndex >= newPageEndIndex)) {
+      debugger;
+      setEditIndex(null);
+    }*/
   };
 
   const handleRowsPerPage = (event) => {
