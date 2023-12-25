@@ -6,6 +6,8 @@
 .pnp.js
 yarn.lock
 package-lock.json
+/src/assets/documents/*
+!/src/assets/documents/.gitkeep
 
 # testing
 /coverage
