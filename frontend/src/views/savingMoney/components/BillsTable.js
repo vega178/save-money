@@ -40,12 +40,14 @@ const BillsTable = () => {
 
   const fetchData = async () => {
     const bills = await getBills();
-    const formattedBills = bills.data.map((bill) => ({
+    const formattedBills = bills.data.map((bill, index) => ({
       ...bill,
       billDate: new Date(bill.billDate),
+      counter: index + 1,
     }));
     setData(formattedBills);
-    setTotalItems(formattedBills.length);
+    
+    setTotalItems(bills.data.length);
   };
 
   useEffect(() => {
@@ -54,7 +56,7 @@ const BillsTable = () => {
 
   const handleEditClick = (index) => {
     setEditIndex(index);
-    setAdding(false);
+    setSaving(false);
   };
 
   const handleSaveClick = async (index) => {
@@ -68,9 +70,10 @@ const BillsTable = () => {
     setSaving(true);
   };
 
-  const handleAddClick = () => {
+  const handleAddClick = (index) => {
+    //TODO: Cuando se actualiza el valor y se selcciona guardar , no esta actualizando el valor si no que lo pasa vacioo al back y no lo actualiza.
     const newRow = {
-      id: data.length + 1,
+      id: index + 1,
       billDate: new Date(),
       name: '',
       amount: '',
@@ -82,9 +85,14 @@ const BillsTable = () => {
     };
 
     setData((prevData) => [...prevData, newRow]);
-    setEditIndex(data.length);
+    setTotalItems(data.length + 1);
+  
+    const currentPage = Math.floor(data.length / rowsPerPage);
     setAdding(true);
-  };
+    setPage(currentPage);
+    setEditIndex(data.length);
+};
+  
 
   const handleCancelButton = async (index) => {
     if (adding) {
@@ -105,8 +113,8 @@ const BillsTable = () => {
           remainingAmount: '',
           gap: '',
         };
-        await create(newBill);
-        fetchData();
+         await update(newBill);
+         fetchData();
       }
     }
   };
@@ -117,12 +125,16 @@ const BillsTable = () => {
     const updatedData = [...data];
     updatedData.splice(index, 1);
     setData(updatedData);
+    updatedData.forEach((bill, i) => {
+      updatedData[i].counter = i + 1;
+    });
   };
 
   const handleDateChange = (date, index) => {
     setData((prevData) => {
       const updatedData = [...prevData];
-      updatedData[index] = { ...updatedData[index], date };
+      const formattedDate = new Date(date);
+      updatedData[index] = { ...updatedData[index], billDate: formattedDate };
       return updatedData;
     });
   };
@@ -135,12 +147,18 @@ const BillsTable = () => {
   };
 
   const handleTextChange = (event, key) => {
-    const updatedData = [...data];
-    updatedData[editIndex][key] = event.target.value;
-    setData(updatedData);
+  setData((prevData) => {
+      const updatedData = [...prevData];
+      const dataIndex = editIndex + page * rowsPerPage;
+      updatedData[dataIndex] = {
+        ...updatedData[dataIndex],
+        [key]: event.target.value,
+      };
+      return updatedData;
+    });
   };
 
-  const handlePageChange = (event, newPage) => {
+  const handlePageChange = (newPage) => {
     setPage(newPage);
   };
 
@@ -163,6 +181,7 @@ const BillsTable = () => {
       }
     } catch (error) {
       console.error('Error updating checkbox state:', error);
+      setData(updatedData);
     }
   };
 
@@ -188,7 +207,7 @@ const BillsTable = () => {
                   <TableRow>
                     <TableCell>
                       <Typography variant="subtitle2" fontWeight={600}>
-                        ID
+                        ITEM
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -239,13 +258,15 @@ const BillsTable = () => {
                 <TableBody>
                   {data.slice(page * rowsPerPage, (page + 1) * rowsPerPage).map((row, index) => (
                     <TableRow key={row.id}>
-                      <TableCell>{row.id}</TableCell>
-                        <Checkbox
+                      <TableCell>{row.counter}</TableCell>
+                      <TableCell>
+                      <Checkbox
                           style={{ color: 'green' }}
                           checked={row.isChecked}
                           onChange={() => handleCheckboxChange(index)}
                           disabled={editIndex === index || adding}
                         />
+                      </TableCell>
                       <TableCell>
                         {editIndex === index ? (
                           <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -253,7 +274,7 @@ const BillsTable = () => {
                               value={row.billDate}
                               onChange={(date) => handleDateChange(date, index)}
                               renderInput={(params) => (
-                                <TextField {...params} style={{ width: '100px' }} />
+                              <TextField {...params} style={{ width: '100px' }} />
                               )}
                             />
                           </LocalizationProvider>
@@ -348,6 +369,7 @@ const BillsTable = () => {
                         <>
                           <Button startIcon={<SaveIcon />} onClick={() => handleSaveClick(index)} />
                           <Button
+                            style={{ color: 'red' }}
                             startIcon={<CloseIcon />}
                             onClick={() => handleCancelButton(index)}
                           />

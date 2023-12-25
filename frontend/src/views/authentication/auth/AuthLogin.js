@@ -60,7 +60,7 @@ const AuthLogin = ({ title, subtitle, subtext }) => (
                 size="large"
                 fullWidth
                 component={Link}
-                to="/"
+                to="/dashboard"
                 type="submit"
             >
                 Sign In
