@@ -8,7 +8,7 @@ yarn.lock
 package-lock.json
 /src/assets/documents/*
 !/src/assets/documents/.gitkeep
-
+/src/assets/images
 # testing
 /coverage
 

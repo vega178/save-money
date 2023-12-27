@@ -1,13 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Typography } from '@mui/material';
-import { Worker, Viewer } from '@react-pdf-viewer/core';
-import * as pdfjs from 'pdfjs-dist';
-import 'pdfjs-dist/web/pdf_viewer.css';
+import { pdfjs } from 'react-pdf';
 
 const FileDropzone = ({ onSave }) => {
   const [filePreview, setFilePreview] = useState(null);
-  const [isPDF, setIsPDF] = useState(false);
+  const [url, setUrl] = useState('');
+
+  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
 
   const onDrop = useCallback(async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -15,11 +15,12 @@ const FileDropzone = ({ onSave }) => {
     if (!file) {
       return;
     }
-    
+
     const fileReader = new FileReader();
 
     fileReader.onload = function () {
       setFilePreview(fileReader.result);
+      setUrl(URL.createObjectURL(file));
     };
 
     fileReader.readAsDataURL(file);
@@ -40,14 +41,15 @@ const FileDropzone = ({ onSave }) => {
     } catch (error) {
       console.error('Error al cargar el archivo:', error);
     }
-  }, []);
+  }, [onSave]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: '.pdf, .xlsx',
     onDrop,
   });
 
   return (
-    <div {...getRootProps()} style={dropzoneStyles}>
+    <div onChange={() => {}} {...getRootProps()} style={dropzoneStyles}>
       <input {...getInputProps()} />
       <Typography variant="body1" align="center" sx={isDragActive ? activeTextStyles : textStyles}>
         {isDragActive
@@ -55,11 +57,9 @@ const FileDropzone = ({ onSave }) => {
           : "Drag 'n' drop some files here, or click to select files"}
       </Typography>
       {filePreview && (
-        <div>
-          {isPDF ? (
-            <Worker workerUrl={`https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`}>
-              <Viewer fileUrl={filePreview} />
-            </Worker>
+        <div style={{ height: '550px' }}>
+          {url ? (
+            <iframe title="PDF Preview" src={url} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           ) : (
             <img src={filePreview} alt="File Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           )}
