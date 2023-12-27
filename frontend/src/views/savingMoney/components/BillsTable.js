@@ -12,6 +12,9 @@ import {
   Button,
   TablePagination,
   Checkbox,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -27,6 +30,8 @@ import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import { format } from 'date-fns';
 import DashboardCard from '../../../components/shared/DashboardCard';
+import BillForm from './BillForm';
+import FileDropzone from './DragAndDropBillsComponent';
 import { getBills, create, update, remove } from '../../../services/billsServices';
 
 const BillsTable = () => {
@@ -37,6 +42,18 @@ const BillsTable = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+
+  const [formData, setFormData] = useState({
+    billDate: new Date(),
+    name: '',
+    amount: '',
+    totalDebt: '',
+    actualDebt: '',
+    totalBalance: '',
+    remainingAmount: '',
+    gap: '',
+  });
 
   const fetchData = async () => {
     const bills = await getBills();
@@ -46,7 +63,7 @@ const BillsTable = () => {
       counter: index + 1,
     }));
     setData(formattedBills);
-    
+
     setTotalItems(bills.data.length);
   };
 
@@ -57,23 +74,31 @@ const BillsTable = () => {
   const handleEditClick = (index) => {
     setEditIndex(index);
     setSaving(false);
+    setFormData(data[index]);
+    setIsFormOpen(true);
   };
 
-  const handleSaveClick = async (index) => {
-    const billToUpdate = data[index];
-    if (adding) {
-      await create(billToUpdate);
-    } else {
-      await update(billToUpdate);
+  const handleSaveClick = async () => {
+    try {
+      if (adding) {
+        await create(formData);
+      } else {
+        await update(formData);
+      }
+
+      setEditIndex(null);
+      setSaving(true);
+      setIsFormOpen(false);
+
+      fetchData();
+    } catch (error) {
+      console.error('Error al guardar:', error);
     }
-    setEditIndex(null);
-    setSaving(true);
   };
 
-  const handleAddClick = (index) => {
-    //TODO: Cuando se actualiza el valor y se selcciona guardar , no esta actualizando el valor si no que lo pasa vacioo al back y no lo actualiza.
-    const newRow = {
-      id: index + 1,
+  const handleAddClick = () => {
+    setAdding(true);
+    setFormData({
       billDate: new Date(),
       name: '',
       amount: '',
@@ -82,41 +107,16 @@ const BillsTable = () => {
       totalBalance: '',
       remainingAmount: '',
       gap: '',
-    };
+    });
+    setIsFormOpen(true);
+  };
 
-    setData((prevData) => [...prevData, newRow]);
-    setTotalItems(data.length + 1);
-  
-    const currentPage = Math.floor(data.length / rowsPerPage);
-    setAdding(true);
-    setPage(currentPage);
-    setEditIndex(data.length);
-};
-  
-
-  const handleCancelButton = async (index) => {
+  const handleCancelButton = () => {
     if (adding) {
-      const updatedData = [...data];
-      updatedData.splice(index, 1);
-      setData(updatedData);
-    } else {
-      setEditIndex(null);
-      if (!saving) {
-        const newBill = {
-          id: data.length + 1,
-          billDate: new Date(),
-          name: '',
-          amount: '',
-          totalDebt: '',
-          actualDebt: '',
-          totalBalance: '',
-          remainingAmount: '',
-          gap: '',
-        };
-         await update(newBill);
-         fetchData();
-      }
+      setAdding(false);
     }
+    setEditIndex(null);
+    setIsFormOpen(false);
   };
 
   const handleDeleteClick = async (index) => {
@@ -130,32 +130,17 @@ const BillsTable = () => {
     });
   };
 
-  const handleDateChange = (date, index) => {
-    setData((prevData) => {
-      const updatedData = [...prevData];
-      const formattedDate = new Date(date);
-      updatedData[index] = { ...updatedData[index], billDate: formattedDate };
-      return updatedData;
-    });
+  const handleDateChange = (date) => {
+    setFormData((prevData) => ({ ...prevData, billDate: date }));
   };
 
   const handleNumericChange = (e, key) => {
     const value = e.target.value.replace(/[^0-9.]/g, ' ');
-    const updatedData = [...data];
-    updatedData[editIndex][key] = value;
-    setData(updatedData);
+    setFormData((prevData) => ({ ...prevData, [key]: value }));
   };
 
   const handleTextChange = (event, key) => {
-  setData((prevData) => {
-      const updatedData = [...prevData];
-      const dataIndex = editIndex + page * rowsPerPage;
-      updatedData[dataIndex] = {
-        ...updatedData[dataIndex],
-        [key]: event.target.value,
-      };
-      return updatedData;
-    });
+    setFormData((prevData) => ({ ...prevData, [key]: event.target.value }));
   };
 
   const handlePageChange = (newPage) => {
@@ -189,7 +174,7 @@ const BillsTable = () => {
     <DashboardCard>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6" fontWeight={600}>
-          Mothly Bills
+          Monthly Bills
         </Typography>
         <Button startIcon={<AddIcon />} sx={{ ml: 2 }} onClick={handleAddClick} />
       </Box>
@@ -197,7 +182,7 @@ const BillsTable = () => {
         {data.length === 0 ? (
           <Alert severity="warning">
             <AlertTitle>Warning</AlertTitle>
-            No bills data available to show. <strong>please add a new one!</strong>
+            No bills data available to show. <strong>Please add a new one!</strong>
           </Alert>
         ) : (
           <>
@@ -260,121 +245,22 @@ const BillsTable = () => {
                     <TableRow key={row.id}>
                       <TableCell>{row.counter}</TableCell>
                       <TableCell>
-                      <Checkbox
+                        <Checkbox
                           style={{ color: 'green' }}
                           checked={row.isChecked}
                           onChange={() => handleCheckboxChange(index)}
                           disabled={editIndex === index || adding}
                         />
                       </TableCell>
+                      <TableCell>{format(row.billDate, 'yyyy-MM-dd')}</TableCell>
+                      <TableCell>{row.name}</TableCell>
+                      <TableCell>{row.amount}</TableCell>
+                      <TableCell>{row.totalDebt}</TableCell>
+                      <TableCell>{row.actualDebt}</TableCell>
+                      <TableCell>{row.totalBalance}</TableCell>
+                      <TableCell>{row.remainingAmount}</TableCell>
+                      <TableCell>{row.gap}</TableCell>
                       <TableCell>
-                        {editIndex === index ? (
-                          <LocalizationProvider dateAdapter={AdapterDateFns}>
-                            <DatePicker
-                              value={row.billDate}
-                              onChange={(date) => handleDateChange(date, index)}
-                              renderInput={(params) => (
-                              <TextField {...params} style={{ width: '100px' }} />
-                              )}
-                            />
-                          </LocalizationProvider>
-                        ) : (
-                          format(row.billDate, 'yyyy-MM-dd')
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editIndex === index ? (
-                          <TextField
-                            multiline
-                            value={row.name}
-                            onChange={(e) => handleTextChange(e, 'name')}
-                          />
-                        ) : (
-                          row.name
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editIndex === index ? (
-                          <TextField
-                            multiline
-                            type="number"
-                            value={row.amount}
-                            onChange={(e) => handleNumericChange(e, 'amount')}
-                          />
-                        ) : (
-                          row.amount
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editIndex === index ? (
-                          <TextField
-                            multiline
-                            type="number"
-                            value={row.totalDebt}
-                            onChange={(e) => handleNumericChange(e, 'totalDebt')}
-                          />
-                        ) : (
-                          row.totalDebt
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editIndex === index ? (
-                          <TextField
-                            multiline
-                            type="number"
-                            value={row.actualDebt}
-                            onChange={(e) => handleNumericChange(e, 'actualDebt')}
-                          />
-                        ) : (
-                          row.actualDebt
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editIndex === index ? (
-                          <TextField
-                            multiline
-                            type="number"
-                            value={row.totalBalance}
-                            onChange={(e) => handleNumericChange(e, 'totalBalance')}
-                          />
-                        ) : (
-                          row.totalBalance
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editIndex === index ? (
-                          <TextField
-                            multiline
-                            type="number"
-                            value={row.remainingAmount}
-                            onChange={(e) => handleNumericChange(e, 'remainingAmount')}
-                          />
-                        ) : (
-                          row.remainingAmount
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {editIndex === index ? (
-                          <TextField
-                            multiline
-                            type="number"
-                            value={row.gap}
-                            onChange={(e) => handleNumericChange(e, 'gap')}
-                          />
-                        ) : (
-                          row.gap
-                        )}
-                      </TableCell>
-                      {editIndex === index ? (
-                        <>
-                          <Button startIcon={<SaveIcon />} onClick={() => handleSaveClick(index)} />
-                          <Button
-                            style={{ color: 'red' }}
-                            startIcon={<CloseIcon />}
-                            onClick={() => handleCancelButton(index)}
-                          />
-                        </>
-                      ) : (
                         <>
                           <Button startIcon={<EditIcon />} onClick={() => handleEditClick(index)} />
                           <Button
@@ -383,7 +269,7 @@ const BillsTable = () => {
                             onClick={() => handleDeleteClick(index)}
                           />
                         </>
-                      )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -401,6 +287,17 @@ const BillsTable = () => {
           </>
         )}
       </Box>
+      <Dialog open={isFormOpen} onClose={handleCancelButton}>
+        <DialogContent>
+          <BillForm
+            isOpen={isFormOpen}
+            onClose={handleCancelButton}
+            onSave={handleSaveClick}
+            data={formData}
+            title={adding ? 'Add new bill' : formData.name}
+          />
+        </DialogContent>
+      </Dialog>
     </DashboardCard>
   );
 };
