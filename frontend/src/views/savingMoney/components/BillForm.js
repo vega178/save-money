@@ -59,27 +59,55 @@ const BillForm = ({ isOpen, onClose, onSave, data, title }) => {
     setFormData((prevData) => ({ ...prevData, billDate: date }));
   };
 
-  const handleNumericChange = (e) => {
+  const handleNumericChange = (e, field) => {
     const value = e.target.value.replace(/[^0-9.]/g, '');
-    setFormData((prevData) => ({ ...prevData, amount: value }));
-    //TODO: Cambiar el numero en el back y bd para que reciba un float y luego si aplicar este cambio , ademas cambiar el tipo de input a text
-    /*setFormData((prevData) => ({ ...prevData, amount: formatNumber(value) }));*/
+    setFormData((prevData) => ({ ...prevData, [field]: formatNumber(value) }));
   };
 
   const formatNumber = (value) => {
-    const floatValue = parseFloat(value.replace(/,/g, ''));
-    return floatValue.toLocaleString('en-US');
+    if (value.trim() === '') {
+      return value;
+    }
+    const cleanedValue = value.replace(/,/g, '');
+    const floatValue = parseFloat(cleanedValue);
+    return !isNaN(floatValue) ? floatValue.toLocaleString('en-US') : value;
+  };
+
+  const removeFormatFromFormFields = (formValues) => {
+    const formattedFields = [
+      'amount',
+      'totalDebt',
+      'actualDebt',
+      'totalBalance',
+      'remainingAmount',
+      'gap',
+    ];
+
+    const unformattedFormValues = { ...formValues };
+
+    formattedFields.forEach((field) => {
+      if (
+        unformattedFormValues[field] !== undefined &&
+        typeof unformattedFormValues[field] === 'string'
+      ) {
+        unformattedFormValues[field] = unformattedFormValues[field].replace(/,/g, '');
+      }
+    });
+
+    return unformattedFormValues;
   };
 
   const handleSaveClick = async () => {
     try {
+      const unformattedFormData = removeFormatFromFormFields(formData);
+
       if (isNewBill) {
-        const createdData = await create(formData);
+        const createdData = await create(unformattedFormData);
         onSave(createdData, file);
       } else {
         const updatedDataWithId = {
           id: data.id,
-          ...formData,
+          ...unformattedFormData,
         };
         await update(updatedDataWithId);
         onSave(updatedDataWithId, file);
@@ -125,10 +153,9 @@ const BillForm = ({ isOpen, onClose, onSave, data, title }) => {
         <TextField
           label="Amount"
           fullWidth
-          type="number"
-          //type="text"
+          type="text"
           value={formData.amount}
-          onChange={(e) => handleNumericChange(e)}
+          onChange={(e) => handleNumericChange(e, 'amount')}
           onFocus={() => {
             if (formData.amount === 0) {
               setFormData((prevData) => ({ ...prevData, amount: '' }));
@@ -144,45 +171,91 @@ const BillForm = ({ isOpen, onClose, onSave, data, title }) => {
         <TextField
           label="Total Debt"
           fullWidth
-          type="number"
+          type="text"
           value={formData.totalDebt}
-          onChange={(e) => setFormData((prevData) => ({ ...prevData, totalDebt: e.target.value }))}
+          onChange={(e) => handleNumericChange(e, 'totalDebt')}
+          onFocus={() => {
+            if (formData.totalDebt === 0) {
+              setFormData((prevData) => ({ ...prevData, totalDebt: '' }));
+            }
+          }}
+          onBlur={() => {
+            if (formData.totalDebt === '') {
+              setFormData((prevData) => ({ ...prevData, totalDebt: 0 }));
+            }
+          }}
           sx={{ mb: 2 }}
         />
         <TextField
           label="Actual Debt"
           fullWidth
-          type="number"
+          type="text"
           value={formData.actualDebt}
-          onChange={(e) => setFormData((prevData) => ({ ...prevData, actualDebt: e.target.value }))}
+          onChange={(e) => handleNumericChange(e, 'actualDebt')}
+          onFocus={() => {
+            if (formData.actualDebt === 0) {
+              setFormData((prevData) => ({ ...prevData, actualDebt: '' }));
+            }
+          }}
+          onBlur={() => {
+            if (formData.actualDebt === '') {
+              setFormData((prevData) => ({ ...prevData, actualDebt: 0 }));
+            }
+          }}
           sx={{ mb: 2 }}
         />
         <TextField
           label="Total Balance"
           fullWidth
-          type="number"
+          type="text"
           value={formData.totalBalance}
-          onChange={(e) =>
-            setFormData((prevData) => ({ ...prevData, totalBalance: e.target.value }))
-          }
+          onChange={(e) => handleNumericChange(e, 'totalBalance')}
+          onFocus={() => {
+            if (formData.totalBalance === 0) {
+              setFormData((prevData) => ({ ...prevData, totalBalance: '' }));
+            }
+          }}
+          onBlur={() => {
+            if (formData.totalBalance === '') {
+              setFormData((prevData) => ({ ...prevData, totalBalance: 0 }));
+            }
+          }}
           sx={{ mb: 2 }}
         />
         <TextField
           label="Remaining Amount"
           fullWidth
-          type="number"
+          type="text"
           value={formData.remainingAmount}
-          onChange={(e) =>
-            setFormData((prevData) => ({ ...prevData, remainingAmount: e.target.value }))
-          }
+          onChange={(e) => handleNumericChange(e, 'remainingAmount')}
+          onFocus={() => {
+            if (formData.remainingAmount === 0) {
+              setFormData((prevData) => ({ ...prevData, remainingAmount: '' }));
+            }
+          }}
+          onBlur={() => {
+            if (formData.remainingAmount === '') {
+              setFormData((prevData) => ({ ...prevData, remainingAmount: 0 }));
+            }
+          }}
           sx={{ mb: 2 }}
         />
         <TextField
           label="Gap"
           fullWidth
-          type="number"
+          type="text"
           value={formData.gap}
-          onChange={(e) => setFormData((prevData) => ({ ...prevData, gap: e.target.value }))}
+          onChange={(e) => handleNumericChange(e, 'gap')}
+          onFocus={() => {
+            if (formData.gap === 0) {
+              setFormData((prevData) => ({ ...prevData, gap: '' }));
+            }
+          }}
+          onBlur={() => {
+            if (formData.gap === '') {
+              setFormData((prevData) => ({ ...prevData, gap: 0 }));
+            }
+          }}
           sx={{ mb: 2 }}
         />
         <FileDropzone onSave={(uploadedFile) => setFile(uploadedFile)} />
