@@ -122,6 +122,8 @@ const BillsTable = () => {
   const handleCheckboxChange = async (index) => {
     const updatedData = [...data];
     updatedData[index].isChecked = !updatedData[index].isChecked;
+    const unformattedAmount = updatedData[index].amount.replace(/,/g, '');
+    updatedData[index].amount = unformattedAmount;
     setData(updatedData);
 
     try {
@@ -223,14 +225,24 @@ const BillsTable = () => {
                         </TableCell>
                         <TableCell>{format(row.billDate, 'yyyy-MM-dd')}</TableCell>
                         <TableCell style={{ whiteSpace: 'pre-line' }}>{row.name}</TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.amount}</TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.totalDebt}</TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.actualDebt}</TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.totalBalance}</TableCell>
                         <TableCell style={{ whiteSpace: 'pre-line' }}>
-                          {row.remainingAmount}
+                          {row.amount.toLocaleString()}
                         </TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.gap}</TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>
+                          {row.totalDebt.toLocaleString()}
+                        </TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>
+                          {row.actualDebt.toLocaleString()}
+                        </TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>
+                          {row.totalBalance.toLocaleString()}
+                        </TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>
+                          {row.remainingAmount.toLocaleString()}
+                        </TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>
+                          {row.gap.toLocaleString()}
+                        </TableCell>
                         <TableCell>
                           <>
                             <Button

@@ -16,12 +16,12 @@ public class Bill {
     private Long id;
     private Date billDate;
     private String name;
-    private Long amount;
-    private Long totalDebt;
-    private Long actualDebt;
-    private Long totalBalance;
-    private Long remainingAmount;
-    private Long gap;
+    private Double amount;
+    private Double totalDebt;
+    private Double actualDebt;
+    private Double totalBalance;
+    private Double remainingAmount;
+    private Double gap;
     private Boolean isChecked;
 
     public Date getBillDate() {
@@ -40,51 +40,51 @@ public class Bill {
         this.name = name;
     }
 
-    public Long getAmount() {
+    public Double getAmount() {
         return amount;
     }
 
-    public void setAmount(Long amount) {
+    public void setAmount(Double amount) {
         this.amount = amount;
     }
 
-    public Long getTotalDebt() {
+    public Double getTotalDebt() {
         return totalDebt;
     }
 
-    public void setTotalDebt(Long totalDebt) {
+    public void setTotalDebt(Double totalDebt) {
         this.totalDebt = totalDebt;
     }
 
-    public Long getActualDebt() {
+    public Double getActualDebt() {
         return actualDebt;
     }
 
-    public void setActualDebt(Long actualDebt) {
+    public void setActualDebt(Double actualDebt) {
         this.actualDebt = actualDebt;
     }
 
-    public Long getTotalBalance() {
+    public Double getTotalBalance() {
         return totalBalance;
     }
 
-    public void setTotalBalance(Long totalBalance) {
+    public void setTotalBalance(Double totalBalance) {
         this.totalBalance = totalBalance;
     }
 
-    public Long getRemainingAmount() {
+    public Double getRemainingAmount() {
         return remainingAmount;
     }
 
-    public void setRemainingAmount(Long remainingAmount) {
+    public void setRemainingAmount(Double remainingAmount) {
         this.remainingAmount = remainingAmount;
     }
 
-    public Long getGap() {
+    public Double getGap() {
         return gap;
     }
 
-    public void setGap(Long gap) {
+    public void setGap(Double gap) {
         this.gap = gap;
     }
 
