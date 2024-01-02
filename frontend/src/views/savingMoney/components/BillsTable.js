@@ -8,30 +8,18 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  TextField,
   Button,
   TablePagination,
   Checkbox,
   Dialog,
-  DialogTitle,
   DialogContent,
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Save as SaveIcon,
-  Close as CloseIcon,
-} from '@mui/icons-material';
-import { LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { DatePicker } from '@mui/x-date-pickers';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import { format } from 'date-fns';
 import DashboardCard from '../../../components/shared/DashboardCard';
 import BillForm from './BillForm';
-import FileDropzone from './DragAndDropBillsComponent';
 import { getBills, create, update, remove } from '../../../services/billsServices';
 
 const BillsTable = () => {
@@ -41,7 +29,6 @@ const BillsTable = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [adding, setAdding] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -63,7 +50,6 @@ const BillsTable = () => {
       counter: index + 1,
     }));
     setData(formattedBills);
-
     setTotalItems(bills.data.length);
   };
 
@@ -72,28 +58,14 @@ const BillsTable = () => {
   }, []);
 
   const handleEditClick = (index) => {
-    setEditIndex(index);
-    setSaving(false);
-    setFormData(data[index]);
+    const globalIndex = page * rowsPerPage + index;
+    setEditIndex(globalIndex);
+    setFormData(data[globalIndex]);
     setIsFormOpen(true);
   };
 
-  const handleSaveClick = async () => {
-    try {
-      if (adding) {
-        await create(formData);
-      } else {
-        await update(formData);
-      }
-
-      setEditIndex(null);
-      setSaving(true);
-      setIsFormOpen(false);
-
-      fetchData();
-    } catch (error) {
-      console.error('Error al guardar:', error);
-    }
+  const getBillsItems = () => {
+    fetchData();
   };
 
   const handleAddClick = () => {
@@ -120,35 +92,30 @@ const BillsTable = () => {
   };
 
   const handleDeleteClick = async (index) => {
-    const billToDelete = data[index];
+    const globalIndex = page * rowsPerPage + index;
+    const billToDelete = data[globalIndex];
     await remove(billToDelete.id);
+
     const updatedData = [...data];
-    updatedData.splice(index, 1);
+    updatedData.splice(globalIndex, 1);
     setData(updatedData);
+
     updatedData.forEach((bill, i) => {
       updatedData[i].counter = i + 1;
     });
+
+    setData(updatedData);
+    setTotalItems(updatedData.length);
+    setIsFormOpen(false);
   };
 
-  const handleDateChange = (date) => {
-    setFormData((prevData) => ({ ...prevData, billDate: date }));
-  };
-
-  const handleNumericChange = (e, key) => {
-    const value = e.target.value.replace(/[^0-9.]/g, ' ');
-    setFormData((prevData) => ({ ...prevData, [key]: value }));
-  };
-
-  const handleTextChange = (event, key) => {
-    setFormData((prevData) => ({ ...prevData, [key]: event.target.value }));
-  };
-
-  const handlePageChange = (newPage) => {
+  const handlePageChange = (event, newPage) => {
     setPage(newPage);
   };
 
   const handleRowsPerPage = (event) => {
-    setRowsPerPage(+event.target.value);
+    const newRowsPerPage = +event.target.value;
+    setRowsPerPage(newRowsPerPage);
     setPage(0);
   };
 
@@ -241,48 +208,55 @@ const BillsTable = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.slice(page * rowsPerPage, (page + 1) * rowsPerPage).map((row, index) => (
-                    <TableRow key={row.id}>
-                      <TableCell>{row.counter}</TableCell>
-                      <TableCell>
-                        <Checkbox
-                          style={{ color: 'green' }}
-                          checked={row.isChecked}
-                          onChange={() => handleCheckboxChange(index)}
-                          disabled={editIndex === index || adding}
-                        />
-                      </TableCell>
-                      <TableCell>{format(row.billDate, 'yyyy-MM-dd')}</TableCell>
-                      <TableCell>{row.name}</TableCell>
-                      <TableCell>{row.amount}</TableCell>
-                      <TableCell>{row.totalDebt}</TableCell>
-                      <TableCell>{row.actualDebt}</TableCell>
-                      <TableCell>{row.totalBalance}</TableCell>
-                      <TableCell>{row.remainingAmount}</TableCell>
-                      <TableCell>{row.gap}</TableCell>
-                      <TableCell>
-                        <>
-                          <Button startIcon={<EditIcon />} onClick={() => handleEditClick(index)} />
-                          <Button
-                            style={{ color: 'red' }}
-                            startIcon={<DeleteIcon />}
-                            onClick={() => handleDeleteClick(index)}
+                  {data
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((row, index) => (
+                      <TableRow key={row.id}>
+                        <TableCell>{row.counter}</TableCell>
+                        <TableCell>
+                          <Checkbox
+                            style={{ color: 'green' }}
+                            checked={row.isChecked}
+                            onChange={() => handleCheckboxChange(index)}
+                            disabled={editIndex === index || adding}
                           />
-                        </>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                        <TableCell>{format(row.billDate, 'yyyy-MM-dd')}</TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.name}</TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.amount}</TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.totalDebt}</TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.actualDebt}</TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.totalBalance}</TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>
+                          {row.remainingAmount}
+                        </TableCell>
+                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.gap}</TableCell>
+                        <TableCell>
+                          <>
+                            <Button
+                              startIcon={<EditIcon />}
+                              onClick={() => handleEditClick(index)}
+                            />
+                            <Button
+                              style={{ color: 'red' }}
+                              startIcon={<DeleteIcon />}
+                              onClick={() => handleDeleteClick(index)}
+                            />
+                          </>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </StyledTable>
             </Table>
             <TablePagination
-              rowsPerPageOptions={[10, 15, 25]}
+              rowsPerPageOptions={[5, 10, 15, 20, 25, 50, 100]}
+              component="div"
+              count={totalItems}
               rowsPerPage={rowsPerPage}
               page={page}
-              component="div"
               onPageChange={handlePageChange}
               onRowsPerPageChange={handleRowsPerPage}
-              count={totalItems}
             />
           </>
         )}
@@ -292,7 +266,7 @@ const BillsTable = () => {
           <BillForm
             isOpen={isFormOpen}
             onClose={handleCancelButton}
-            onSave={handleSaveClick}
+            onSave={getBillsItems}
             data={formData}
             title={adding ? 'Add new bill' : formData.name}
           />
