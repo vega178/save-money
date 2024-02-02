@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import { Link } from 'react-router-dom';
 import { Grid, Box, Card, Stack, Typography } from '@mui/material';
 
@@ -8,6 +8,13 @@ import Logo from 'src/layouts/full/shared/logo/Logo';
 import AuthLogin from './auth/AuthLogin';
 
 const Login2 = () => {
+  const initialFormData = {
+    name: '',
+    email: '',
+    password: ''        
+  }
+
+  const [formData, setFormData] = useState(initialFormData);
   
   return (
     <PageContainer title="Login" description="this is Login page">
