@@ -8,6 +8,10 @@ import {
   Button,
   Typography,
   Box,
+  FormControlLabel,
+  Checkbox,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
@@ -19,6 +23,31 @@ const BillForm = ({ isOpen, onClose, onSave, data, title }) => {
   const isNewBill = !data || !data.id;
   const [file, setFile] = useState(null);
   const [dateValue, setDateValue] = useState(isNewBill ? new Date() : data.billDate);
+  const [useExistingValue, setUseExistingValue] = useState(false);
+  const [selectedExistingBill, setSelectedExistingBill] = useState('');
+
+  const handleUseExistingValueChange = (event) => {
+    setUseExistingValue(event.target.checked);
+    if (!event.target.checked) {
+      updateFormData();
+      setSelectedExistingBill('');
+    }
+  };
+
+  const handleExistingBillChange = (event) => {
+    setSelectedExistingBill(event.target.value);
+    const selectedBillDetails = data.find((bill) => bill.name === event.target.value);
+    setFormData({
+      ...initialFormData,
+      name: selectedBillDetails.name,
+      amount: selectedBillDetails.amount || 0,
+      totalDebt: selectedBillDetails.totalDebt || 0,
+      actualDebt: selectedBillDetails.actualDebt || 0,
+      totalBalance: selectedBillDetails.totalBalance || 0,
+      remainingAmount: selectedBillDetails.remainingAmount || 0,
+      gap: selectedBillDetails.gap || 0,
+    });
+  };
 
   const initialFormData = {
     billDate: isNewBill ? new Date() : data.billDate,
@@ -99,7 +128,10 @@ const BillForm = ({ isOpen, onClose, onSave, data, title }) => {
 
   const handleSaveClick = async () => {
     try {
-      const unformattedFormData = removeFormatFromFormFields(formData);
+      const unformattedFormData = removeFormatFromFormFields({
+        ...formData,
+        billDate: dateValue,
+      });
 
       if (isNewBill) {
         const createdData = await create(unformattedFormData);
@@ -188,7 +220,7 @@ const BillForm = ({ isOpen, onClose, onSave, data, title }) => {
         />
         <TextField
           label="Actual Debt"
-          fullWidth
+          disabled
           type="text"
           value={formData.actualDebt}
           onChange={(e) => handleNumericChange(e, 'actualDebt')}
@@ -224,7 +256,7 @@ const BillForm = ({ isOpen, onClose, onSave, data, title }) => {
         />
         <TextField
           label="Remaining Amount"
-          fullWidth
+          disabled
           type="text"
           value={formData.remainingAmount}
           onChange={(e) => handleNumericChange(e, 'remainingAmount')}
@@ -241,6 +273,7 @@ const BillForm = ({ isOpen, onClose, onSave, data, title }) => {
           sx={{ mb: 2 }}
         />
         <TextField
+          //TODO: Calculo valor ingresado (Sumatoria de todos los valores ingresados por el mes actual - Obligation Average)
           label="Gap"
           fullWidth
           type="text"
@@ -258,6 +291,50 @@ const BillForm = ({ isOpen, onClose, onSave, data, title }) => {
           }}
           sx={{ mb: 2 }}
         />
+        {/** TODO: Pending to fix the list no esta trayendo la data */}
+        <FormControlLabel
+          control={<Checkbox checked={useExistingValue} onChange={handleUseExistingValueChange} />}
+          label="Use Existing Bill"
+        />
+        {useExistingValue && (
+          <>
+            <Select
+              value={selectedExistingBill}
+              onChange={handleExistingBillChange}
+              fullWidth
+              sx={{ mb: 2 }}
+            >
+              <MenuItem value="" disabled>
+                Select an existing bill
+              </MenuItem>
+              {Array.isArray(data) &&
+                data.map((bill) => (
+                  <MenuItem key={bill.id} value={bill.name}>
+                    {bill.name}
+                  </MenuItem>
+                ))}
+            </Select>
+            {selectedExistingBill && (
+              <div>
+                <Typography variant="h6" fontWeight={600} sx={{ mt: 2 }}>
+                  Selected Bill Details:
+                </Typography>
+                <ul>
+                  {/* Mostrar detalles del bill seleccionado */}
+                  <li>Name: {selectedExistingBill}</li>
+                  <li>
+                    Amount: {data.find((bill) => bill.name === selectedExistingBill)?.amount || 0}
+                  </li>
+                  <li>
+                    Total Debt:{' '}
+                    {data.find((bill) => bill.name === selectedExistingBill)?.totalDebt || 0}
+                  </li>
+                  {/* Agregar más detalles según sea necesario */}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
         <FileDropzone onSave={(uploadedFile) => setFile(uploadedFile)} />
       </DialogContent>
       <DialogActions sx={{ display: 'flex', justifyContent: 'center' }}>

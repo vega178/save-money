@@ -13,6 +13,7 @@ import {
   Checkbox,
   Dialog,
   DialogContent,
+  TextField,
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import Alert from '@mui/material/Alert';
@@ -44,11 +45,27 @@ const BillsTable = () => {
 
   const fetchData = async () => {
     const bills = await getBills();
-    const formattedBills = bills.data.map((bill, index) => ({
-      ...bill,
-      billDate: new Date(bill.billDate),
-      counter: index + 1,
-    }));
+    let cumulativeAmount = 0;
+
+    const formattedBills = bills.data.map((bill, index) => {
+      const billDate = new Date(bill.billDate);
+      const counter = index + 1;
+      const actualDebt = bill.totalDebt - bill.amount;
+      let currentMonth = new Date();
+      if (billDate.getMonth() + 1  !== currentMonth.getMonth() + 1) {
+        cumulativeAmount = 0;
+      }
+      cumulativeAmount += bill.amount;
+      const remainingAmount = bill.totalBalance - cumulativeAmount;
+
+      return {
+        ...bill,
+        billDate,
+        counter,
+        actualDebt,
+        remainingAmount,
+      };
+    });
     setData(formattedBills);
     setTotalItems(bills.data.length);
   };
@@ -122,10 +139,7 @@ const BillsTable = () => {
   const handleCheckboxChange = async (index) => {
     const updatedData = [...data];
     updatedData[index].isChecked = !updatedData[index].isChecked;
-    const unformattedAmount = updatedData[index].amount.replace(/,/g, '');
-    updatedData[index].amount = unformattedAmount;
     setData(updatedData);
-
     try {
       const billToUpdate = updatedData[index];
       if (billToUpdate.id) {
@@ -138,6 +152,7 @@ const BillsTable = () => {
       setData(updatedData);
     }
   };
+  //TODO: Pendiente de agregar a la bd y se debera crear y actualizar el valor en el back cuando se ingrese o modifique el valor
 
   return (
     <DashboardCard>
@@ -146,6 +161,7 @@ const BillsTable = () => {
           Monthly Bills
         </Typography>
         <Button startIcon={<AddIcon />} sx={{ ml: 2 }} onClick={handleAddClick} />
+        <TextField sx={{ ml: '50em', textAlign: 'right' }} label="Obligation Average %" variant="standard" />
       </Box>
       <Box sx={{ mt: 2, width: { xs: '280px', sm: 'auto' } }}>
         {data.length === 0 ? (
