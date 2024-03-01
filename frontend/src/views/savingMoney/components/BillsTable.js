@@ -296,6 +296,7 @@ const BillsTable = () => {
             onClose={handleCancelButton}
             onSave={getBillsItems}
             data={formData}
+            items = {data}
             title={adding ? 'Add new bill' : formData.name}
           />
         </DialogContent>
