@@ -19,6 +19,7 @@ public class BillServiceImpl implements BillService {
     @Override
     @Transactional(readOnly = true)
     public List<Bill> findAll() {
+        billRepository.findAll().forEach(System.out::println);
         return (List<Bill>) billRepository.findAll();
     }
 
