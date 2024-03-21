@@ -1,6 +1,9 @@
 package com.webapp.save_money_backend.auth.filters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,25 +34,29 @@ public class JwtValidationFilter extends BasicAuthenticationFilter {
             return;
         }
         String token = header.replace(PREFIX_TOKEN, "");
-        //Decodificar el token recibido y compararlo con la palaba clave
-        byte[] tokenDecodeBytes = Base64.getDecoder().decode(token);
-        String tokenDecode = new String(tokenDecodeBytes);
 
-        String[] tokenArr = tokenDecode.split("\\.");
-        String secret = tokenArr[0];
-        String username = tokenArr[1];
+        try {
+            //Validate token
+            Claims claims = Jwts.parser()
+                    .setSigningKey(SECRET_KEY)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
 
-        if (SECRET_KEY.equals(secret)) {
+            String username = claims.getSubject();
+
             List<GrantedAuthority> authorities = new ArrayList<>();
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(username,
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    username,
                     null,
-                    authorities);
+                    authorities
+            );
             SecurityContextHolder.getContext().setAuthentication(authentication);
             chain.doFilter(request, response);
-        } else {
+        } catch (JwtException e){
             Map<String, String> body = new HashMap<>();
-            body.put("message", "Invalid JWT token!");
+            body.put("message", e.getMessage());
             response.getWriter().write(new ObjectMapper().writeValueAsString(body));
             response.setStatus(403);
             response.setContentType(CONTENT_TYPE);
