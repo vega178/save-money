@@ -34,8 +34,11 @@ public class SpringSecurityConfig {
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http.authorizeHttpRequests()
-                .requestMatchers(HttpMethod.GET, "/users")//review for what kind of service will be public for save money app
-                .permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasAnyRole("USER", "ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/users").permitAll()//review for what kind of service will be public for save money app
+                .requestMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/users/{id}").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasRole("ADMIN")
                 .anyRequest()
                 .authenticated()
                 .and()
