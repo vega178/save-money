@@ -8,5 +8,5 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BillRepository extends CrudRepository<Bill, Long> {
-    List<Bill> findByUser(User user);
+    /*List<Bill> findBillByUserId(Long id);*/
 }

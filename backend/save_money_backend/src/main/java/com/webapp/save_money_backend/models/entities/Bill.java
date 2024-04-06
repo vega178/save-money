@@ -14,9 +14,11 @@ public class Bill {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @ManyToOne
+
+    //TODO INvestigar como puedo elimar este error Field 'user_id' doesn't have a default value
+    /*@ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private User user;*/
     private Date billDate;
     private String name;
     private Double amount;
