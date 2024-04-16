@@ -12,8 +12,9 @@ import java.util.List;
 @Table(name = "users")
 public class User {
     @Id
+    @Column(name = "ID")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long user_id;
+    private Long id;
     @Column(unique = true)
     private String username;
     private String password;
@@ -22,18 +23,21 @@ public class User {
     @ManyToMany
     @JoinTable(
             name = "users_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
+            joinColumns = @JoinColumn(name = "ID"),
             inverseJoinColumns = @JoinColumn(name = "role_id"),
-            uniqueConstraints = { @UniqueConstraint(columnNames = {"user_id", "role_id"})}
+            uniqueConstraints = { @UniqueConstraint(columnNames = {"ID", "role_id"})}
     )
     private List<Role> roles;
 
-    public Long getUser_id() {
-        return user_id;
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.ALL)
+    private List<Bill> bills;
+
+    public Long getId() {
+        return id;
     }
 
-    public void setUser_id(Long user_id) {
-        this.user_id = user_id;
+    public void setId(Long id) {
+        this.id = id;
     }
     public String getUsername() {
         return username;
@@ -65,5 +69,13 @@ public class User {
 
     public void setRoles(List<Role> roles) {
         this.roles = roles;
+    }
+
+    public List<Bill> getBills() {
+        return bills;
+    }
+
+    public void setBills(List<Bill> bills) {
+        this.bills = bills;
     }
 }

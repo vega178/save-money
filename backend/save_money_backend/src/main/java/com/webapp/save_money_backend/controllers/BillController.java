@@ -11,18 +11,18 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/bills")
+@RequestMapping("/api")
 @CrossOrigin(origins = "*")
 public class BillController {
     @Autowired
     private BillService service;
 
-    @GetMapping()
+    @GetMapping("/bills")
     public List<Bill> findAll() {
        return service.findAll();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/bills/{id}")
     public ResponseEntity<?> find(@PathVariable Long id) {
         Optional<Bill> bill = service.findById(id);
         if (bill.isPresent()) {
@@ -31,12 +31,12 @@ public class BillController {
         return ResponseEntity.notFound().build();
     }
 
-    @PostMapping
+    @PostMapping("/bills")
     public ResponseEntity<?> create(@RequestBody Bill bill) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.save(bill));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/bills/{id}")
     public ResponseEntity<?> update(@RequestBody Bill bill, @PathVariable Long id) {
         Optional<Bill> billToUpdate = service.update(bill, id);
         if (billToUpdate.isPresent()) {
@@ -45,7 +45,7 @@ public class BillController {
         return ResponseEntity.notFound().build();
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/bills/{id}")
     public ResponseEntity<?> remove(@PathVariable Long id) {
         Optional<Bill> billToRemove = service.findById(id);
         if (billToRemove.isPresent()) {
@@ -53,5 +53,16 @@ public class BillController {
             return ResponseEntity.noContent().build(); //204
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/users/{id}/bills")
+    public ResponseEntity<List<Bill>> getBillsByUserId(@PathVariable Long id) {
+        List<Bill> bills = service.getBillsByUserId(id);
+        return ResponseEntity.ok(bills);
+    }
+
+    @PostMapping("/users/{id}/bills")
+    public ResponseEntity<?> create(@RequestBody Bill bill, @PathVariable Long id) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.save(bill, id));
     }
 }

@@ -1,5 +1,6 @@
 package com.webapp.save_money_backend;
 
+import com.webapp.save_money_backend.models.entities.Bill;
 import com.webapp.save_money_backend.services.BillService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -12,9 +13,8 @@ public class SaveMoneyBackendApplication {
 		SpringApplication.run(SaveMoneyBackendApplication.class, args);
 	}
 
-	CommandLineRunner lookupExistentService(BillService billService) {
+	CommandLineRunner lookupExistentService() {
 		return args -> {
-			billService.findAll();
 		};
 	}
 

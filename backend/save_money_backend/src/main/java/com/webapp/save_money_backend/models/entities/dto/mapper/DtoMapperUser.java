@@ -22,6 +22,6 @@ public class DtoMapperUser {
         if (user == null) {
             throw new RuntimeException("Should have user entity");
         }
-        return new UserDto(this.user.getUser_id(), user.getUsername(), user.getEmail());
+        return new UserDto(this.user.getId(), user.getUsername(), user.getEmail());
     }
 }

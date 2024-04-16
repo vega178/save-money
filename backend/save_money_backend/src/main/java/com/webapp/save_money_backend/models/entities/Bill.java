@@ -1,5 +1,6 @@
 package com.webapp.save_money_backend.models.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -14,11 +15,10 @@ public class Bill {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    //TODO INvestigar como puedo elimar este error Field 'user_id' doesn't have a default value
-    /*@ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;*/
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "userId")
+    @JsonIgnore
+    private User user;
     private Date billDate;
     private String name;
     private Double amount;
@@ -99,5 +99,21 @@ public class Bill {
 
     public void setChecked(Boolean checked) {
         isChecked = checked;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }
