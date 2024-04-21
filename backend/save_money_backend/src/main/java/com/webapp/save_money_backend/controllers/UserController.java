@@ -1,6 +1,7 @@
 package com.webapp.save_money_backend.controllers;
 
 import com.webapp.save_money_backend.models.entities.User;
+import com.webapp.save_money_backend.models.entities.dto.UserDto;
 import com.webapp.save_money_backend.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -12,20 +13,20 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(originPatterns = "*")
+@CrossOrigin(origins = "*")
 public class UserController {
 
     @Autowired
     private UserService userService;
 
     @GetMapping()
-    public List<User> listAll() {
+    public List<UserDto> listAll() {
         return userService.findAll();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> find(@PathVariable Long id){
-        Optional<User> user = userService.findById(id);
+        Optional<UserDto> user = userService.findById(id);
         if (user.isPresent()) {
             return ResponseEntity.ok(user.get());
         }
@@ -39,7 +40,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@RequestBody User user, @PathVariable Long id) {
-        Optional<User> userToUpdate = userService.update(user, id);
+        Optional<UserDto> userToUpdate = userService.update(user, id);
         if (userToUpdate.isPresent()) {
             return ResponseEntity.status(HttpStatus.CREATED).body(userToUpdate.get());
         }
@@ -48,7 +49,7 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> remove(@PathVariable Long id) {
-        Optional<User> userToRemove = userService.findById(id);
+        Optional<UserDto> userToRemove = userService.findById(id);
         if (userToRemove.isPresent()) {
             userService.remove(id);
             return ResponseEntity.noContent().build(); //204

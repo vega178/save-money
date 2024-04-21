@@ -24,6 +24,12 @@ const Profile = () => {
     setAnchorEl2(null);
   };
 
+  const handlerLogout = () => {
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('login');
+    sessionStorage.clear();
+  };
+
   return (
     <Box>
       <IconButton
@@ -84,7 +90,7 @@ const Profile = () => {
           <ListItemText>My Tasks</ListItemText>
         </MenuItem>
         <Box mt={1} py={1} px={2}>
-          <Button to="/auth/login" variant="outlined" color="primary" component={Link} fullWidth>
+          <Button to="/auth/login" variant="outlined" color="primary" component={Link} onClick={handlerLogout} fullWidth>
             Logout
           </Button>
         </Box>

@@ -8,15 +8,8 @@ import Logo from 'src/layouts/full/shared/logo/Logo';
 import AuthLogin from './auth/AuthLogin';
 
 const Login2 = () => {
-  const initialFormData = {
-    name: '',
-    email: '',
-    password: ''        
-  }
-
-  const [formData, setFormData] = useState(initialFormData);
-  
   return (
+    
     <PageContainer title="Login" description="this is Login page">
       <Box
         sx={{

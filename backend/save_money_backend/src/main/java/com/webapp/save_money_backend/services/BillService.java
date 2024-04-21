@@ -11,4 +11,6 @@ public interface BillService {
     Bill save(Bill bill);
     Optional<Bill> update(Bill bill, Long id);
     void remove(Long id);
+    List<Bill> getBillsByUserId(Long user_id);
+    Bill save(Bill bill, Long user_id);
 }

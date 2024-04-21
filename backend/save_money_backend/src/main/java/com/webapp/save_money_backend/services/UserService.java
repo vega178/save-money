@@ -1,19 +1,20 @@
 package com.webapp.save_money_backend.services;
 
 import com.webapp.save_money_backend.models.entities.User;
+import com.webapp.save_money_backend.models.entities.dto.UserDto;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface UserService {
 
-    List<User> findAll();
+    List<UserDto> findAll();
 
-    Optional<User> findById(Long id);
+    Optional<UserDto> findById(Long id);
 
-    User save(User user);
+    UserDto save(User user);
 
-    Optional<User> update(User  user, Long id);
+    Optional<UserDto> update(User  user, Long id);
 
     void remove(Long id);
 }
