@@ -35,8 +35,6 @@ const BillsTable = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const mainJsonSession = sessionStorage.getItem('login');
   const jsonSession = JSON.parse(mainJsonSession);
-  
-  const [userId, setUserId] = useState(null);
 
   const [formData, setFormData] = useState({
     billDate: new Date(),
@@ -54,13 +52,11 @@ const BillsTable = () => {
     
     users.data.forEach(item => {
       if (item.username === jsonSession.username) {
-        //TODO; Is taking too long to get the data investigate and integrate useContext hook
-        setUserId(item.id);
+        sessionStorage.setItem("userId", item.id);
       }
     });
-    console.log(userId);
 
-    const bills = await getBillsByUserId(userId);
+    const bills = await getBillsByUserId(sessionStorage.getItem("userId"));
     let cumulativeAmount = 0;
     const formattedBills = bills.data.map((bill, index) => {
       const billDate = new Date(bill.billDate);
@@ -313,7 +309,7 @@ const BillsTable = () => {
             data={formData}
             items = {data}
             title={adding ? 'Add new bill' : formData.name}
-            user={userId}
+            user={sessionStorage.getItem("userId")}
           />
         </DialogContent>
       </Dialog>

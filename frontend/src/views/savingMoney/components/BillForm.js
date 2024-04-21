@@ -141,8 +141,6 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
       });
 
       if (isNewBill) {
-      
-        console.log("create user " + user); 
         const createdData = await createBillByUserId(user, unformattedFormData);
         onSave(createdData, file);
       } else {
