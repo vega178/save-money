@@ -17,9 +17,9 @@ import { Close as CloseIcon } from '@mui/icons-material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import FileDropzone from './DragAndDropBillsComponent';
-import { create, update } from '../../../services/billsServices';
+import { createBillByUserId, update } from '../../../services/billsServices';
 
-const BillForm = ({ isOpen, onClose, onSave, data, items, title }) => {
+const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
   const isNewBill = !data || !data.id;
   const [file, setFile] = useState(null);
   const [dateValue, setDateValue] = useState(isNewBill ? new Date() : data.billDate);
@@ -141,7 +141,9 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title }) => {
       });
 
       if (isNewBill) {
-        const createdData = await create(unformattedFormData);
+      
+        console.log("create user " + user); 
+        const createdData = await createBillByUserId(user, unformattedFormData);
         onSave(createdData, file);
       } else {
         const updatedDataWithId = {

@@ -1,30 +1,49 @@
 import axios from "axios";
 
-const BASE_URL = 'http://localhost:8080/api/bills';
+const BASE_URL = 'http://localhost:8080/api';
+
+const config = () => {
+  return {
+    headers: {
+      "Authorization" : sessionStorage.getItem('token'),
+      "Content-Type" : "application/json",
+    }
+  }
+}
 
 export const getBills = async() => {
   try {
-    return await axios.get(BASE_URL);
+    return await axios.get(BASE_URL + "/bills", config());
   } catch (error) {
     console.log(error);
   }
   return null;
 }
 
-export const create = async({
-  billDate,
-  name,
-  amount,
-  totalDebt,
-  actualDebt,
-  totalBalance,
-  remainingAmount,
-  gap,
-  isChecked
+export const getBillsByUserId = async(userId) => {
+  try {
+    return await axios.get(`${BASE_URL + "/users"}/${userId}/bills`, config());
+  } catch (error) {
+    console.log(error);
+  }
+  return null;
+}
+
+export const createBillByUserId = async(userId,
+  {
+    billDate,
+    name,
+    amount,
+    totalDebt,
+    actualDebt,
+    totalBalance,
+    remainingAmount,
+    gap,
+    isChecked
 }) => {
   try {
     return await axios.post(
-      BASE_URL, 
+      `${BASE_URL + "/users"}/${userId}/bills`, 
       {
          billDate,
          name,
@@ -35,7 +54,7 @@ export const create = async({
          remainingAmount,
          gap,
          isChecked
-      }
+      }, config()
     );
   } catch (error) {
     console.log(error);
@@ -57,7 +76,7 @@ export const update = async({
 }) => {
   try {
     return await axios.put(
-      `${BASE_URL}/${id}`, 
+      `${BASE_URL + "/bills"}/${id}`, 
       {
          billDate,
          name,
@@ -68,7 +87,7 @@ export const update = async({
          remainingAmount,
          gap,
          isChecked
-      }
+      }, config()
     );
   } catch (error) {
     console.log(error);
@@ -78,7 +97,7 @@ export const update = async({
 
 export const remove = async(id) => {
   try {
-    return await axios.delete(`${BASE_URL}/${id}`);
+    return await axios.delete(`${BASE_URL+ "/bills"}/${id}`, config());
   } catch (error) {
     console.log(error);
   }

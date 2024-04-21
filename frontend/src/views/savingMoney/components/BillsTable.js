@@ -21,7 +21,9 @@ import AlertTitle from '@mui/material/AlertTitle';
 import { format } from 'date-fns';
 import DashboardCard from '../../../components/shared/DashboardCard';
 import BillForm from './BillForm';
-import { getBills, create, update, remove } from '../../../services/billsServices';
+import { getBillsByUserId, createBillByUserId, update, remove } from '../../../services/billsServices';
+import { getUsers } from '../../../services/userService';
+
 
 const BillsTable = () => {
   const [data, setData] = useState([]);
@@ -31,6 +33,10 @@ const BillsTable = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [adding, setAdding] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const mainJsonSession = sessionStorage.getItem('login');
+  const jsonSession = JSON.parse(mainJsonSession);
+  
+  const [userId, setUserId] = useState(null);
 
   const [formData, setFormData] = useState({
     billDate: new Date(),
@@ -44,9 +50,18 @@ const BillsTable = () => {
   });
 
   const fetchData = async () => {
-    const bills = await getBills();
-    let cumulativeAmount = 0;
+    const users = await getUsers();
+    
+    users.data.forEach(item => {
+      if (item.username === jsonSession.username) {
+        //TODO; Is taking too long to get the data investigate and integrate useContext hook
+        setUserId(item.id);
+      }
+    });
+    console.log(userId);
 
+    const bills = await getBillsByUserId(userId);
+    let cumulativeAmount = 0;
     const formattedBills = bills.data.map((bill, index) => {
       const billDate = new Date(bill.billDate);
       const counter = index + 1;
@@ -145,7 +160,7 @@ const BillsTable = () => {
       if (billToUpdate.id) {
         await update(billToUpdate);
       } else {
-        await create(billToUpdate);
+        await createBillByUserId(billToUpdate);
       }
     } catch (error) {
       console.error('Error updating checkbox state:', error);
@@ -298,6 +313,7 @@ const BillsTable = () => {
             data={formData}
             items = {data}
             title={adding ? 'Add new bill' : formData.name}
+            user={userId}
           />
         </DialogContent>
       </Dialog>
