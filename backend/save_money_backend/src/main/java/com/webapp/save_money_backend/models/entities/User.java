@@ -29,7 +29,7 @@ public class User {
     )
     private List<Role> roles;
 
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user")
     private List<Bill> bills;
 
     public Long getId() {
