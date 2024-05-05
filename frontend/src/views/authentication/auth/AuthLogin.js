@@ -8,14 +8,20 @@ import {
   Stack,
   Checkbox,
   OutlinedInput,
+  TextField,
   InputAdornment,
   IconButton,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  useMediaQuery,
+  Dialog,
 } from '@mui/material';
-
-import { Link } from 'react-router-dom';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import CustomTextField from '../../../components/forms/theme-elements/CustomTextField';
+import { useTheme } from '@mui/material/styles';
+import { Link } from 'react-router-dom';
 import { login } from '../../../services/userService';
 
 const initialFormData = {
@@ -26,6 +32,9 @@ const initialFormData = {
 const AuthLogin = ({ title, subtitle, subtext }) => {
   const [formData, setFormData] = useState(initialFormData);
   const [showPassword, setShowPassword] = React.useState(false);
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+  const [openModal, setOpenModal] = useState(false);
   const handleClickShowPassword = () => setShowPassword((show) => !show);
   const handleMouseDownPassword = (event) => {
     event.preventDefault();
@@ -36,19 +45,22 @@ const AuthLogin = ({ title, subtitle, subtext }) => {
       const response = await login(formData);
       const token = response.data.token;
       //Decode a string in base 64
-      const claims = JSON.parse(window.atob(token.split(".")[1]));
-      sessionStorage.setItem('login', JSON.stringify({isAdmin: claims.isAdmin, username: response.data.username}));
+      const claims = JSON.parse(window.atob(token.split('.')[1]));
+      sessionStorage.setItem(
+        'login',
+        JSON.stringify({ isAdmin: claims.isAdmin, username: response.data.username }),
+      );
       sessionStorage.setItem('token', `Bearer ${token}`);
+      window.location.href = '/dashboard';
     } catch (error) {
-        if(error.response?.status === 401) {
-            console.error('Login error user o password invalidos :', error);
-        } else if(error.response?.status === 403) {
-            console.error('Login error notiene acceso al recurso o permisos :', error);
-        } else {
-            console.error('Login error :', error);
-        }
+      setOpenModal(true);
+      console.error('Login error :', error);
     }
-  }
+  };
+
+  const handleClose = () => {
+    setOpenModal(false);
+  };
 
   return (
     <>
@@ -69,12 +81,12 @@ const AuthLogin = ({ title, subtitle, subtext }) => {
           >
             Username
           </Typography>
-          <CustomTextField
-           id="username" 
-           variant="outlined"
-           onChange={(e) => setFormData((prevData) => ({ ...prevData, username: e.target.value }))}
-           value={formData.username}
-           fullWidth
+          <TextField
+            id="username"
+            variant="outlined"
+            onChange={(e) => setFormData((prevData) => ({ ...prevData, username: e.target.value }))}
+            value={formData.username}
+            fullWidth
           />
         </Box>
         <Box mt="25px">
@@ -131,7 +143,6 @@ const AuthLogin = ({ title, subtitle, subtext }) => {
           size="large"
           fullWidth
           component={Link}
-          to="/dashboard"
           type="submit"
           onClick={handlerLogin}
         >
@@ -139,6 +150,22 @@ const AuthLogin = ({ title, subtitle, subtext }) => {
         </Button>
       </Box>
       {subtitle}
+      <Dialog
+        fullScreen={fullScreen}
+        open={openModal}
+        onClose={handleClose}
+        aria-labelledby="responsive-dialog-title"
+      >
+        <DialogTitle id="responsive-dialog-title">{'Sign In Failed'}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>Incorrect username or password. Please try again!!.</DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center' }}>
+          <Button autoFocus onClick={handleClose} variant="contained" color="error">
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
