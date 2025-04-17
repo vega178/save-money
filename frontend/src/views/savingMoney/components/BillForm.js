@@ -41,8 +41,10 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
     const selectedBillDetails = items.find((bill) => bill.name === selectedBillName);
   
     if (selectedBillDetails != null) {
+      const billDate = new Date(selectedBillDetails.billDate);
       setFormData({
         ...initialFormData,
+        billDate: billDate,
         name: selectedBillDetails.name || "",
         amount: selectedBillDetails.amount || 0,
         totalDebt: selectedBillDetails.totalDebt || 0,
@@ -52,6 +54,7 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
         gap: selectedBillDetails.gap || 0,
       });
     } else {
+      setDateValue(new Date()); 
       setFormData(initialFormData);
     }
   };
@@ -88,7 +91,7 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
 
   useEffect(() => {
     updateFormData();
-  }, [dateValue, data]);
+  }, [data]);
 
   const handleDateChange = (date) => {
     setDateValue(date);
@@ -139,7 +142,6 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
         ...formData,
         billDate: dateValue,
       });
-
       if (isNewBill) {
         const createdData = await createBillByUserId(user, unformattedFormData);
         onSave(createdData, file);
@@ -151,7 +153,6 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
         await update(updatedDataWithId);
         onSave(updatedDataWithId, file);
       }
-
       setFile(null);
       onSave(formData, file);
       onClose();
@@ -299,7 +300,13 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
           sx={{ mb: 2 }}
         />
         <FormControlLabel
-          control={<Checkbox checked={useExistingValue} onChange={handleUseExistingValueChange} />}
+          control={
+            <Checkbox
+              checked={useExistingValue}
+              onChange={handleUseExistingValueChange}
+              disabled={!items || items.length === 0}
+            />
+          }
           label="Use Existing Bill"
         />
         {useExistingValue && (

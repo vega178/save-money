@@ -16,17 +16,24 @@ import {
   TextField,
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { MenuItem, Select } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import { format } from 'date-fns';
 import DashboardCard from '../../../components/shared/DashboardCard';
 import BillForm from './BillForm';
-import { getBillsByUserId, createBillByUserId, update, remove } from '../../../services/billsServices';
+import {
+  getBillsByUserId,
+  createBillByUserId,
+  update,
+  remove,
+} from '../../../services/billsServices';
 import { getUsers } from '../../../services/userService';
-
 
 const BillsTable = () => {
   const [data, setData] = useState([]);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -35,6 +42,14 @@ const BillsTable = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const mainJsonSession = sessionStorage.getItem('login');
   const jsonSession = JSON.parse(mainJsonSession);
+  const [filteredData, setFilteredData] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] = useState(false);
+  const [availableYears, setAvailableYears] = useState([]);
+  const [availableMonths, setAvailableMonths] = useState([]);
+  const [cumulativeAmountState, setCumulativeAmountState] = useState(0);
+
 
   const [formData, setFormData] = useState({
     billDate: new Date(),
@@ -48,37 +63,76 @@ const BillsTable = () => {
   });
 
   const fetchData = async () => {
-    const users = await getUsers();
-    
-    users.data.forEach(item => {
-      if (item.username === jsonSession.username) {
-        sessionStorage.setItem("userId", item.id);
+    try {
+      const users = await getUsers();
+      if (!users || !users.data) {
+        console.error('Failed to fetch users or users data is null.');
+        return;
       }
-    });
 
-    const bills = await getBillsByUserId(sessionStorage.getItem("userId"));
-    let cumulativeAmount = 0;
-    const formattedBills = bills.data.map((bill, index) => {
-      const billDate = new Date(bill.billDate);
-      const counter = index + 1;
-      const actualDebt = bill.totalDebt - bill.amount;
-      let currentMonth = new Date();
-      if (billDate.getMonth() + 1  !== currentMonth.getMonth() + 1) {
-        cumulativeAmount = 0;
+      users.data.forEach((item) => {
+        if (item.username === jsonSession.username) {
+          sessionStorage.setItem('userId', item.id);
+        }
+      });
+
+      const userId = sessionStorage.getItem('userId');
+      if (!userId) {
+        console.error('User ID not found in session storage.');
+        return;
       }
-      cumulativeAmount += bill.amount;
-      const remainingAmount = bill.totalBalance - cumulativeAmount;
 
-      return {
-        ...bill,
-        billDate,
-        counter,
-        actualDebt,
-        remainingAmount,
-      };
-    });
-    setData(formattedBills);
-    setTotalItems(bills.data.length);
+      const bills = await getBillsByUserId(sessionStorage.getItem('userId'));
+      if (!bills || !bills.data) {
+        if(bills.message.includes("status code 403")) {
+          setIsSessionTimeoutModalOpen(true);
+        }
+        console.error('Failed to fetch bills or bills data is null.' + bills.message);
+        return;
+      }
+
+      let cumulativeAmount = cumulativeAmountState;
+      const formattedBills = bills.data.map((bill, index) => {
+        const billDate = new Date(bill.billDate);
+        const counter = index + 1;
+        const actualDebt = bill.totalDebt - bill.amount;
+        let currentMonth = new Date();
+        if (billDate.getMonth() + 1 !== currentMonth.getMonth() + 1) {
+          cumulativeAmount = 0;
+        }
+        cumulativeAmount += bill.amount;
+        const remainingAmount = bill.totalBalance - cumulativeAmount;
+
+        return {
+          ...bill,
+          billDate,
+          counter,
+          actualDebt,
+          remainingAmount,
+        };
+      });
+      setData(formattedBills);
+      const filtered = formattedBills.filter((item) => {
+        const billDate = new Date(item.billDate);
+        const matchesMonth =
+          selectedMonth === '' || billDate.getMonth() + 1 === parseInt(selectedMonth);
+        const matchesYear =
+          selectedYear === '' || billDate.getFullYear() === parseInt(selectedYear);
+        return matchesMonth && matchesYear;
+      });
+      setFilteredData(filtered);
+      setTotalItems(bills.data.length);
+      const { years, months } = getAvailableYearsAndMonths(formattedBills);
+      setAvailableYears(years);
+      setAvailableMonths(months);
+      setCumulativeAmountState(cumulativeAmount);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      if (error.response && error.response.data.message.includes('JWT expired')) {
+        console.log('JWT expired error detected');
+        setIsSessionTimeoutModalOpen(true);
+      }
+    }
   };
 
   useEffect(() => {
@@ -121,20 +175,17 @@ const BillsTable = () => {
 
   const handleDeleteClick = async (index) => {
     const globalIndex = page * rowsPerPage + index;
-    const billToDelete = data[globalIndex];
+    const billToDelete = filteredData[globalIndex];
     await remove(billToDelete.id);
 
-    const updatedData = [...data];
-    updatedData.splice(globalIndex, 1);
+    const updatedFilteredData = [...filteredData];
+    updatedFilteredData.splice(globalIndex, 1);
+    setFilteredData(updatedFilteredData);
+
+    const updatedData = data.filter((item) => item.id !== billToDelete.id);
     setData(updatedData);
 
-    updatedData.forEach((bill, i) => {
-      updatedData[i].counter = i + 1;
-    });
-
-    setData(updatedData);
-    setTotalItems(updatedData.length);
-    setIsFormOpen(false);
+    setTotalItems(updatedFilteredData.length);
   };
 
   const handlePageChange = (event, newPage) => {
@@ -148,21 +199,122 @@ const BillsTable = () => {
   };
 
   const handleCheckboxChange = async (index) => {
-    const updatedData = [...data];
-    updatedData[index].isChecked = !updatedData[index].isChecked;
-    setData(updatedData);
+    const updatedFilteredData = [...filteredData];
+    const itemToUpdate = updatedFilteredData[index];
+
+    itemToUpdate.isChecked = !itemToUpdate.isChecked;
+
     try {
-      const billToUpdate = updatedData[index];
-      if (billToUpdate.id) {
-        await update(billToUpdate);
+      if (itemToUpdate.id) {
+        await update(itemToUpdate);
       } else {
-        await createBillByUserId(billToUpdate);
+        const createdItem = await createBillByUserId(itemToUpdate);
+        itemToUpdate.id = createdItem.id;
       }
+      setFilteredData(updatedFilteredData);
+
+      const updatedSelectedItems = updatedFilteredData
+        .filter((item) => item.isChecked)
+        .map((item) => item.id);
+
+      setSelectedItems(updatedSelectedItems);
+      setSelectAll(updatedSelectedItems.length === updatedFilteredData.length);
     } catch (error) {
       console.error('Error updating checkbox state:', error);
-      setData(updatedData);
     }
   };
+
+  const handleSelectAll = () => {
+    const updatedSelectAll = !selectAll;
+    setSelectAll(updatedSelectAll);
+
+    const updatedFilteredData = filteredData.map((item) => ({
+      ...item,
+      isChecked: updatedSelectAll,
+    }));
+
+    setFilteredData(updatedFilteredData);
+    setSelectedItems(updatedSelectAll ? updatedFilteredData.map((item) => item.id) : []);
+  };
+
+  const handleSelectedItemsChange = (id) => {
+    if (selectedItems.includes(id)) {
+      setSelectedItems(selectedItems.filter((itemId) => itemId !== id));
+    } else {
+      setSelectedItems([...selectedItems, id]);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    try {
+      for (const id of selectedItems) {
+        await remove(id);
+      }
+
+      const updatedFilteredData = filteredData.filter((item) => !selectedItems.includes(item.id));
+      setFilteredData(updatedFilteredData);
+
+      const updatedData = data.filter((item) => !selectedItems.includes(item.id));
+      setData(updatedData);
+
+      setSelectedItems([]);
+      setSelectAll(false);
+    } catch (error) {
+      console.error('Error deleting selected items:', error);
+    }
+  };
+
+  const handleMonthChange = (event) => {
+    const month = event.target.value;
+    setSelectedMonth(month);
+    const filtered = data.filter((item) => {
+      const billDate = new Date(item.billDate);
+      const matchesMonth = month === '' || billDate.getMonth() + 1 === parseInt(month);
+      const matchesYear = selectedYear === '' || billDate.getFullYear() === parseInt(selectedYear);
+      return matchesMonth && matchesYear;
+    });
+    setFilteredData(filtered);
+    setPage(0);
+  };
+
+  const handleYearChange = (event) => {
+    const year = event.target.value;
+    setSelectedYear(year);
+
+    const filtered = data.filter((item) => {
+      const billDate = new Date(item.billDate);
+      const matchesMonth =
+        selectedMonth === '' || billDate.getMonth() + 1 === parseInt(selectedMonth);
+      const matchesYear = year === '' || billDate.getFullYear() === parseInt(year);
+      return matchesMonth && matchesYear;
+    });
+
+    setFilteredData(filtered);
+    setPage(0);
+  };
+
+  const getAvailableYearsAndMonths = (data) => {
+    const years = new Set();
+    const months = new Set();
+  
+    data.forEach((item) => {
+      const billDate = new Date(item.billDate);
+      years.add(billDate.getFullYear());
+      months.add(billDate.getMonth() + 1);
+    });
+  
+    return {
+      years: Array.from(years).sort((a, b) => a - b),
+      months: Array.from(months).sort((a, b) => a - b),
+    };
+  };
+
+  const getFinalRemainingAmount = () => {
+    if (filteredData.length === 0) return null;
+    const lastItem = filteredData[filteredData.length - 1];
+    return lastItem.remainingAmount;
+  };
+
   //TODO: Pendiente de agregar a la bd y se debera crear y actualizar el valor en el back cuando se ingrese o modifique el valor
 
   return (
@@ -172,7 +324,88 @@ const BillsTable = () => {
           Monthly Bills
         </Typography>
         <Button startIcon={<AddIcon />} sx={{ ml: 2 }} onClick={handleAddClick} />
-        <TextField sx={{ ml: '50em', textAlign: 'right' }} label="Obligation Average %" variant="standard" />
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography
+          variant="body1"
+          sx={{
+            fontWeight: 600,
+            mr: 2,
+            color: getFinalRemainingAmount() < 0 ? 'red' : 'green',
+          }}
+        >
+        {selectedYear || selectedMonth
+      ? `Remaining Amount for ${selectedYear || 'All Years'} - ${
+          selectedMonth
+            ? [
+                'January',
+                'February',
+                'March',
+                'April',
+                'May',
+                'June',
+                'July',
+                'August',
+                'September',
+                'October',
+                'November',
+                'December',
+              ][selectedMonth - 1]
+            : 'All Months'
+        } = ${getFinalRemainingAmount() !== null ? getFinalRemainingAmount().toLocaleString() : 'N/A'}`
+      : 'No Filter Applied'}
+        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Select
+            value={selectedYear}
+            onChange={handleYearChange}
+            displayEmpty
+            sx={{ width: 150, mr: 2 }}
+            disabled={data.length === 0}
+          >
+            <MenuItem value="">
+              <em>All Years</em>
+            </MenuItem>
+            {[2025, 2026, 2027, 2028, 2029, 2030].map((year) => (
+              <MenuItem key={year} value={year} disabled={!availableYears.includes(year)}>
+                {year}
+              </MenuItem>
+            ))}
+          </Select>
+          <Select
+            value={selectedMonth}
+            onChange={handleMonthChange}
+            displayEmpty
+            sx={{ width: 200 }}
+            disabled={data.length === 0}
+          >
+            <MenuItem value="">
+              <em>All Months</em>
+            </MenuItem>
+            {[
+              { value: 1, label: 'January' },
+              { value: 2, label: 'February' },
+              { value: 3, label: 'March' },
+              { value: 4, label: 'April' },
+              { value: 5, label: 'May' },
+              { value: 6, label: 'June' },
+              { value: 7, label: 'July' },
+              { value: 8, label: 'August' },
+              { value: 9, label: 'September' },
+              { value: 10, label: 'October' },
+              { value: 11, label: 'November' },
+              { value: 12, label: 'December' },
+            ].map((month) => (
+              <MenuItem
+                key={month.value}
+                value={month.value}
+                disabled={!availableMonths.includes(month.value)}
+              >
+                {month.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </Box>
       </Box>
       <Box sx={{ mt: 2, width: { xs: '280px', sm: 'auto' } }}>
         {data.length === 0 ? (
@@ -192,7 +425,11 @@ const BillsTable = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="subtitle2" fontWeight={600}></Typography>
+                      <Checkbox
+                        style={{ color: 'green' }}
+                        checked={selectAll}
+                        onChange={handleSelectAll}
+                      />
                     </TableCell>
                     <TableCell>
                       <Typography variant="subtitle2" fontWeight={600}>
@@ -234,10 +471,18 @@ const BillsTable = () => {
                         GAP
                       </Typography>
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        style={{ color: 'red' }}
+                        startIcon={<DeleteIcon />}
+                        onClick={handleDeleteSelected}
+                        disabled={selectedItems.length === 0}
+                      />
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data
+                  {filteredData
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((row, index) => (
                       <TableRow key={row.id}>
@@ -307,10 +552,32 @@ const BillsTable = () => {
             onClose={handleCancelButton}
             onSave={getBillsItems}
             data={formData}
-            items = {data}
+            items={data}
             title={adding ? 'Add new bill' : formData.name}
-            user={sessionStorage.getItem("userId")}
+            user={sessionStorage.getItem('userId')}
           />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isSessionTimeoutModalOpen} onClose={() => {}}>
+        <DialogContent>
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+            Session Timeout
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Your session has expired. Please log in again to continue.
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              sessionStorage.clear();
+              window.location.href = '/auth/login';
+            }}
+          >
+            Accept
+          </Button>
+        </Box>
         </DialogContent>
       </Dialog>
     </DashboardCard>

@@ -25,8 +25,8 @@ export const getBillsByUserId = async(userId) => {
     return await axios.get(`${BASE_URL + "/users"}/${userId}/bills`, config());
   } catch (error) {
     console.log(error);
+    return error;
   }
-  return null;
 }
 
 export const createBillByUserId = async(userId,
