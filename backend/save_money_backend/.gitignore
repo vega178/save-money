@@ -20,6 +20,7 @@ save_money_backend.iml
 *.iml
 *.ipr
 .mvn
+*.sql
 
 ### NetBeans ###
 /nbproject/private/
@@ -33,3 +34,4 @@ build/
 
 ### VS Code ###
 .vscode/
+*.log

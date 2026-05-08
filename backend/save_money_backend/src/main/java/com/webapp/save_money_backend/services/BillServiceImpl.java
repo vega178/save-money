@@ -1,13 +1,20 @@
 package com.webapp.save_money_backend.services;
 
 import com.webapp.save_money_backend.models.entities.Bill;
+import com.webapp.save_money_backend.models.entities.User;
 import com.webapp.save_money_backend.repositories.BillRepository;
+import com.webapp.save_money_backend.repositories.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -15,6 +22,9 @@ import java.util.Optional;
 public class BillServiceImpl implements BillService {
     @Autowired
     private BillRepository billRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -56,5 +66,65 @@ public class BillServiceImpl implements BillService {
     @Override
     public void remove(Long id) {
         billRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Bill> getBillsByUserId(Long id) {
+        List<Bill> bills;
+        try {
+            bills = billRepository.findByUserId(id);
+        } catch (Error e) {
+            throw new RuntimeException(String.format("Bill %s not found for user", id));
+        }
+
+        // Sort by position (nulls last), then by date
+        bills.sort(Comparator.comparingInt((Bill b) -> b.getPosition() != null ? b.getPosition() : Integer.MAX_VALUE)
+                .thenComparing(Bill::getBillDate));
+
+        // Compute actualDebt and remainingAmount (cumulative per month/year)
+        Map<String, Double> cumulativePerMonth = new HashMap<>();
+        for (Bill bill : bills) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(bill.getBillDate());
+            String key = cal.get(Calendar.YEAR) + "-" + (cal.get(Calendar.MONTH) + 1);
+
+            double cumulative = cumulativePerMonth.getOrDefault(key, 0.0) + bill.getAmount();
+            cumulativePerMonth.put(key, cumulative);
+
+            bill.setActualDebt(bill.getTotalDebt() - bill.getAmount());
+            bill.setRemainingAmount(bill.getTotalBalance() - cumulative);
+        }
+
+        return bills;
+    }
+
+    @Override
+    @Transactional
+    public void reorderBills(List<Long> orderedIds) {
+        for (int i = 0; i < orderedIds.size(); i++) {
+            Optional<Bill> billOpt = billRepository.findById(orderedIds.get(i));
+            if (billOpt.isPresent()) {
+                Bill bill = billOpt.get();
+                bill.setPosition(i);
+                billRepository.save(bill);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public Bill save(Bill bill, Long id) {
+        Optional<User> userOptional = userRepository.findById(id);
+        Bill billEntity = new Bill();
+        try {
+            if (userOptional.isPresent()) {
+                User user = userOptional.get();
+                bill.setUser(user);
+                return billRepository.save(bill);
+            }
+        } catch (Error e) {
+            throw new RuntimeException(String.format("Bill %s not found for user", id));
+        }
+       return billEntity;
     }
 }
