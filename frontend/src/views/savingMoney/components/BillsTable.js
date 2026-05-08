@@ -15,11 +15,14 @@ import {
   DialogContent,
   TextField,
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, DragIndicator as DragIndicatorIcon } from '@mui/icons-material';
 import { MenuItem, Select } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import { format } from 'date-fns';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import DashboardCard from '../../../components/shared/DashboardCard';
 import BillForm from './BillForm';
 import {
@@ -27,8 +30,54 @@ import {
   createBillByUserId,
   update,
   remove,
+  reorderBills,
 } from '../../../services/billsServices';
 import { getUsers } from '../../../services/userService';
+
+const SortableTableRow = ({ row, index, editIndex, adding, handleCheckboxChange, handleEditClick, handleDeleteClick }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: String(row.id) });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    background: isDragging ? '#f0f0f0' : undefined,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style} key={row.id}>
+      <TableCell>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <span {...attributes} {...listeners} style={{ cursor: 'grab', color: '#aaa', display: 'flex' }}>
+            <DragIndicatorIcon fontSize="small" />
+          </span>
+          {row.counter}
+        </Box>
+      </TableCell>
+      <TableCell>
+        <Checkbox
+          style={{ color: 'green' }}
+          checked={row.isChecked}
+          onChange={() => handleCheckboxChange(index)}
+          disabled={editIndex === index || adding}
+        />
+      </TableCell>
+      <TableCell>{format(row.billDate, 'yyyy-MM-dd')}</TableCell>
+      <TableCell style={{ whiteSpace: 'pre-line' }}>{row.name}</TableCell>
+      <TableCell style={{ whiteSpace: 'pre-line' }}>{row.amount.toLocaleString()}</TableCell>
+      <TableCell style={{ whiteSpace: 'pre-line' }}>{row.totalDebt.toLocaleString()}</TableCell>
+      <TableCell style={{ whiteSpace: 'pre-line' }}>{row.actualDebt.toLocaleString()}</TableCell>
+      <TableCell style={{ whiteSpace: 'pre-line' }}>{row.totalBalance.toLocaleString()}</TableCell>
+      <TableCell style={{ whiteSpace: 'pre-line' }}>{row.remainingAmount.toLocaleString()}</TableCell>
+      <TableCell style={{ whiteSpace: 'pre-line' }}>{row.gap.toLocaleString()}</TableCell>
+      <TableCell>
+        <>
+          <Button startIcon={<EditIcon />} onClick={() => handleEditClick(index)} />
+          <Button style={{ color: 'red' }} startIcon={<DeleteIcon />} onClick={() => handleDeleteClick(index)} />
+        </>
+      </TableCell>
+    </TableRow>
+  );
+};
 
 const BillsTable = () => {
   const [data, setData] = useState([]);
@@ -48,7 +97,6 @@ const BillsTable = () => {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] = useState(false);
   const [availableYears, setAvailableYears] = useState([]);
   const [availableMonths, setAvailableMonths] = useState([]);
-  const [cumulativeAmountState, setCumulativeAmountState] = useState(0);
 
 
   const [formData, setFormData] = useState({
@@ -91,24 +139,13 @@ const BillsTable = () => {
         return;
       }
 
-      let cumulativeAmount = cumulativeAmountState;
       const formattedBills = bills.data.map((bill, index) => {
         const billDate = new Date(bill.billDate);
         const counter = index + 1;
-        const actualDebt = bill.totalDebt - bill.amount;
-        let currentMonth = new Date();
-        if (billDate.getMonth() + 1 !== currentMonth.getMonth() + 1) {
-          cumulativeAmount = 0;
-        }
-        cumulativeAmount += bill.amount;
-        const remainingAmount = bill.totalBalance - cumulativeAmount;
-
         return {
           ...bill,
           billDate,
           counter,
-          actualDebt,
-          remainingAmount,
         };
       });
       setData(formattedBills);
@@ -125,7 +162,7 @@ const BillsTable = () => {
       const { years, months } = getAvailableYearsAndMonths(formattedBills);
       setAvailableYears(years);
       setAvailableMonths(months);
-      setCumulativeAmountState(cumulativeAmount);
+      return formattedBills;
     } catch (error) {
       console.error('Error fetching data:', error);
       if (error.response && error.response.data.message.includes('JWT expired')) {
@@ -139,6 +176,37 @@ const BillsTable = () => {
     fetchData();
   }, []);
 
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = filteredData.findIndex((r) => String(r.id) === active.id);
+    const newIndex = filteredData.findIndex((r) => String(r.id) === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(filteredData, oldIndex, newIndex).map((item, i) => ({
+      ...item,
+      counter: i + 1,
+    }));
+    setFilteredData(reordered);
+
+    // Also reorder in the full data array
+    const movedId = filteredData[oldIndex].id;
+    const fullOldIndex = data.findIndex((r) => r.id === movedId);
+    const targetId = filteredData[newIndex].id;
+    const fullNewIndex = data.findIndex((r) => r.id === targetId);
+    if (fullOldIndex !== -1 && fullNewIndex !== -1) {
+      const reorderedData = arrayMove(data, fullOldIndex, fullNewIndex).map((item, i) => ({
+        ...item,
+        counter: i + 1,
+      }));
+      setData(reorderedData);
+      await reorderBills(reorderedData.map((r) => r.id));
+    }
+  };
+
   const handleEditClick = (index) => {
     const globalIndex = page * rowsPerPage + index;
     setEditIndex(globalIndex);
@@ -146,8 +214,8 @@ const BillsTable = () => {
     setIsFormOpen(true);
   };
 
-  const getBillsItems = () => {
-    fetchData();
+  const getBillsItems = async () => {
+    await fetchData();
   };
 
   const handleAddClick = () => {
@@ -315,7 +383,6 @@ const BillsTable = () => {
     return lastItem.remainingAmount;
   };
 
-  //TODO: Pendiente de agregar a la bd y se debera crear y actualizar el valor en el back cuando se ingrese o modifique el valor
 
   return (
     <DashboardCard>
@@ -482,54 +549,27 @@ const BillsTable = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredData
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row, index) => (
-                      <TableRow key={row.id}>
-                        <TableCell>{row.counter}</TableCell>
-                        <TableCell>
-                          <Checkbox
-                            style={{ color: 'green' }}
-                            checked={row.isChecked}
-                            onChange={() => handleCheckboxChange(index)}
-                            disabled={editIndex === index || adding}
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext
+                      items={filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((r) => String(r.id))}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {filteredData
+                        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                        .map((row, index) => (
+                          <SortableTableRow
+                            key={row.id}
+                            row={row}
+                            index={index}
+                            editIndex={editIndex}
+                            adding={adding}
+                            handleCheckboxChange={handleCheckboxChange}
+                            handleEditClick={handleEditClick}
+                            handleDeleteClick={handleDeleteClick}
                           />
-                        </TableCell>
-                        <TableCell>{format(row.billDate, 'yyyy-MM-dd')}</TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>{row.name}</TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>
-                          {row.amount.toLocaleString()}
-                        </TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>
-                          {row.totalDebt.toLocaleString()}
-                        </TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>
-                          {row.actualDebt.toLocaleString()}
-                        </TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>
-                          {row.totalBalance.toLocaleString()}
-                        </TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>
-                          {row.remainingAmount.toLocaleString()}
-                        </TableCell>
-                        <TableCell style={{ whiteSpace: 'pre-line' }}>
-                          {row.gap.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          <>
-                            <Button
-                              startIcon={<EditIcon />}
-                              onClick={() => handleEditClick(index)}
-                            />
-                            <Button
-                              style={{ color: 'red' }}
-                              startIcon={<DeleteIcon />}
-                              onClick={() => handleDeleteClick(index)}
-                            />
-                          </>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                        ))}
+                    </SortableContext>
+                  </DndContext>
                 </TableBody>
               </StyledTable>
             </Table>

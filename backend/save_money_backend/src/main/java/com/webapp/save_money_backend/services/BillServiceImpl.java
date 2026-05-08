@@ -10,7 +10,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -66,13 +70,45 @@ public class BillServiceImpl implements BillService {
 
     @Transactional(readOnly = true)
     public List<Bill> getBillsByUserId(Long id) {
-        List<Bill> billsEntities = new ArrayList<>();
+        List<Bill> bills;
         try {
-             billsEntities = billRepository.findByUserId(id);
+            bills = billRepository.findByUserId(id);
         } catch (Error e) {
             throw new RuntimeException(String.format("Bill %s not found for user", id));
         }
-       return billsEntities;
+
+        // Sort by position (nulls last), then by date
+        bills.sort(Comparator.comparingInt((Bill b) -> b.getPosition() != null ? b.getPosition() : Integer.MAX_VALUE)
+                .thenComparing(Bill::getBillDate));
+
+        // Compute actualDebt and remainingAmount (cumulative per month/year)
+        Map<String, Double> cumulativePerMonth = new HashMap<>();
+        for (Bill bill : bills) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(bill.getBillDate());
+            String key = cal.get(Calendar.YEAR) + "-" + (cal.get(Calendar.MONTH) + 1);
+
+            double cumulative = cumulativePerMonth.getOrDefault(key, 0.0) + bill.getAmount();
+            cumulativePerMonth.put(key, cumulative);
+
+            bill.setActualDebt(bill.getTotalDebt() - bill.getAmount());
+            bill.setRemainingAmount(bill.getTotalBalance() - cumulative);
+        }
+
+        return bills;
+    }
+
+    @Override
+    @Transactional
+    public void reorderBills(List<Long> orderedIds) {
+        for (int i = 0; i < orderedIds.size(); i++) {
+            Optional<Bill> billOpt = billRepository.findById(orderedIds.get(i));
+            if (billOpt.isPresent()) {
+                Bill bill = billOpt.get();
+                bill.setPosition(i);
+                billRepository.save(bill);
+            }
+        }
     }
 
     @Override

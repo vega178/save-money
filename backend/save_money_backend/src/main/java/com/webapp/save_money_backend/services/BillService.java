@@ -13,4 +13,5 @@ public interface BillService {
     void remove(Long id);
     List<Bill> getBillsByUserId(Long user_id);
     Bill save(Bill bill, Long user_id);
+    void reorderBills(List<Long> orderedIds);
 }
