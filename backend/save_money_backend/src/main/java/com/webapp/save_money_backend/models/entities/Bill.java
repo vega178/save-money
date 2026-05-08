@@ -28,6 +28,15 @@ public class Bill {
     private Double remainingAmount;
     private Double gap;
     private Boolean isChecked;
+    private Integer position;
+
+    public Integer getPosition() {
+        return position;
+    }
+
+    public void setPosition(Integer position) {
+        this.position = position;
+    }
 
     public Date getBillDate() {
         return billDate;

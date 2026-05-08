@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = 'http://localhost:8080/api';
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
 const config = () => {
   return {
@@ -98,6 +98,14 @@ export const update = async({
 export const remove = async(id) => {
   try {
     return await axios.delete(`${BASE_URL+ "/bills"}/${id}`, config());
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+export const reorderBills = async(orderedIds) => {
+  try {
+    return await axios.put(`${BASE_URL}/bills/reorder`, orderedIds, config());
   } catch (error) {
     console.log(error);
   }

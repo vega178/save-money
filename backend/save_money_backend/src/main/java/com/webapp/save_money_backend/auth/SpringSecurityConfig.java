@@ -3,6 +3,7 @@ package com.webapp.save_money_backend.auth;
 import com.webapp.save_money_backend.auth.filters.JwtAuthenticationFilter;
 import com.webapp.save_money_backend.auth.filters.JwtValidationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +25,9 @@ import java.util.List;
 
 @Configuration
 public class SpringSecurityConfig {
+
+    @Value("${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}")
+    private String allowedOriginsProperty;
 
     @Autowired
     private AuthenticationConfiguration authenticationConfiguration;
@@ -60,7 +64,8 @@ public class SpringSecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("http://localhost:8080", "http://localhost:3000"));
+        List<String> origins = List.of(allowedOriginsProperty.split(","));
+        config.setAllowedOriginPatterns(origins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);

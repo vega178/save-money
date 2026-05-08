@@ -65,4 +65,10 @@ public class BillController {
     public ResponseEntity<?> create(@RequestBody Bill bill, @PathVariable Long id) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.save(bill, id));
     }
+
+    @PutMapping("/bills/reorder")
+    public ResponseEntity<?> reorder(@RequestBody List<Long> orderedIds) {
+        service.reorderBills(orderedIds);
+        return ResponseEntity.ok().build();
+    }
 }
