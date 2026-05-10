@@ -1,80 +1,50 @@
-import axios from "axios";
-
-const BASE_URL = 'http://localhost:8080';
-
-const config = () => {
-  return {
-    headers: {
-      "Authorization" : sessionStorage.getItem('token'),
-      "Content-Type" : "application/json",
-    }
-  }
-}
+/**
+ * userService.js
+ *
+ * All paths are relative to the baseURL configured in api.js
+ * (REACT_APP_API_URL or http://localhost:8080/api).
+ *
+ * The shared `api` instance handles:
+ *   - Attaching the Authorization header automatically
+ *   - Unwrapping the NestJS { success, data, timestamp } response envelope
+ */
+import api from './api';
 
 export const getUsers = async () => {
   try {
-    return await axios.get(BASE_URL + "/api/users");
+    return await api.get('/users');
   } catch (error) {
     console.log(error);
   }
   return null;
 }
 
-export const createUser = async({
-  username, 
-  email,
-  password
-}) => {
+export const createUser = async({ username, email, password }) => {
   try {
-    return await axios.post(
-      BASE_URL + "/api/users",
-      {
-        username,
-        email,
-        password
-      },
-       config()
-    );
+    return await api.post('/users', { username, email, password });
   } catch (error) {
     console.log(error);
   }
   return undefined;
 }
 
-export const login = async({
-  username, 
-  password
-}) => {
+/**
+ * login — posts to /api/auth/login (NestJS AuthController).
+ * Spring Boot used the form-login default at /login; NestJS exposes /auth/login.
+ * The response shape { token, username, message } is identical.
+ */
+export const login = async({ username, password }) => {
   try {
-    return await axios.post(
-      BASE_URL + "/login",
-      {
-        username,
-        password
-      }
-    );
+    return await api.post('/auth/login', { username, password });
   } catch (error) {
     console.log(error);
   }
   return undefined;
 }
 
-export const updateUser = async({
-  id,
-  username, 
-  email,
-  password
-}) => {
+export const updateUser = async({ id, username, email }) => {
   try {
-    return await axios.put(
-      `${BASE_URL}/api/users/${id}`, 
-      {
-        username, 
-        email,
-        password
-      },
-      config()
-    );
+    return await api.put(`/users/${id}`, { username, email });
   } catch (error) {
     console.log(error);
   }
@@ -83,7 +53,7 @@ export const updateUser = async({
 
 export const deleteUser = async(id) => {
   try {
-    return await axios.delete(`${BASE_URL}/api/users/${id}`, config());
+    return await api.delete(`/users/${id}`);
   } catch (error) {
     console.log(error);
   }

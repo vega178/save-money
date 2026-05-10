@@ -113,7 +113,7 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
   };
 
   const removeFormatFromFormFields = (formValues) => {
-    const formattedFields = [
+    const numericFields = [
       'amount',
       'totalDebt',
       'actualDebt',
@@ -124,12 +124,13 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
 
     const unformattedFormValues = { ...formValues };
 
-    formattedFields.forEach((field) => {
-      if (
-        unformattedFormValues[field] !== undefined &&
-        typeof unformattedFormValues[field] === 'string'
-      ) {
-        unformattedFormValues[field] = unformattedFormValues[field].replace(/,/g, '');
+    numericFields.forEach((field) => {
+      if (unformattedFormValues[field] !== undefined) {
+        // Strip thousand-separator commas then coerce to a real Number so the
+        // API receives 11212 instead of the string "11,212" or "11212".
+        const cleaned = String(unformattedFormValues[field]).replace(/,/g, '');
+        const parsed = parseFloat(cleaned);
+        unformattedFormValues[field] = isNaN(parsed) ? 0 : parsed;
       }
     });
 
