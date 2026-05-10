@@ -1,19 +1,18 @@
-import axios from "axios";
-
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
-
-const config = () => {
-  return {
-    headers: {
-      "Authorization" : sessionStorage.getItem('token'),
-      "Content-Type" : "application/json",
-    }
-  }
-}
+/**
+ * billsServices.js
+ *
+ * All paths are relative to the baseURL configured in api.js
+ * (REACT_APP_API_URL or http://localhost:8080/api).
+ *
+ * The shared `api` instance handles:
+ *   - Attaching the Authorization header automatically
+ *   - Unwrapping the NestJS { success, data, timestamp } response envelope
+ */
+import api from './api';
 
 export const getBills = async() => {
   try {
-    return await axios.get(BASE_URL + "/bills", config());
+    return await api.get('/bills');
   } catch (error) {
     console.log(error);
   }
@@ -22,7 +21,7 @@ export const getBills = async() => {
 
 export const getBillsByUserId = async(userId) => {
   try {
-    return await axios.get(`${BASE_URL + "/users"}/${userId}/bills`, config());
+    return await api.get(`/users/${userId}/bills`);
   } catch (error) {
     console.log(error);
     return error;
@@ -42,19 +41,9 @@ export const createBillByUserId = async(userId,
     isChecked
 }) => {
   try {
-    return await axios.post(
-      `${BASE_URL + "/users"}/${userId}/bills`, 
-      {
-         billDate,
-         name,
-         amount,
-         totalDebt,
-         actualDebt,
-         totalBalance,
-         remainingAmount,
-         gap,
-         isChecked
-      }, config()
+    return await api.post(
+      `/users/${userId}/bills`,
+      { billDate, name, amount, totalDebt, actualDebt, totalBalance, remainingAmount, gap, isChecked },
     );
   } catch (error) {
     console.log(error);
@@ -75,19 +64,9 @@ export const update = async({
   isChecked
 }) => {
   try {
-    return await axios.put(
-      `${BASE_URL + "/bills"}/${id}`, 
-      {
-         billDate,
-         name,
-         amount,
-         totalDebt,
-         actualDebt,
-         totalBalance,
-         remainingAmount,
-         gap,
-         isChecked
-      }, config()
+    return await api.put(
+      `/bills/${id}`,
+      { billDate, name, amount, totalDebt, actualDebt, totalBalance, remainingAmount, gap, isChecked },
     );
   } catch (error) {
     console.log(error);
@@ -97,7 +76,7 @@ export const update = async({
 
 export const remove = async(id) => {
   try {
-    return await axios.delete(`${BASE_URL+ "/bills"}/${id}`, config());
+    return await api.delete(`/bills/${id}`);
   } catch (error) {
     console.log(error);
   }
@@ -105,7 +84,7 @@ export const remove = async(id) => {
 
 export const reorderBills = async(orderedIds) => {
   try {
-    return await axios.put(`${BASE_URL}/bills/reorder`, orderedIds, config());
+    return await api.put('/bills/reorder', orderedIds);
   } catch (error) {
     console.log(error);
   }
