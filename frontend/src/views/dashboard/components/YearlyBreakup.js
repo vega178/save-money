@@ -1,114 +1,98 @@
 import React from 'react';
 import Chart from 'react-apexcharts';
 import { useTheme } from '@mui/material/styles';
-import { Grid, Stack, Typography, Avatar } from '@mui/material';
-import { IconArrowUpLeft } from '@tabler/icons';
-
+import { Grid, Stack, Typography, Avatar, Box } from '@mui/material';
+import { IconArrowUpLeft, IconArrowDownRight } from '@tabler/icons';
 import DashboardCard from '../../../components/shared/DashboardCard';
 
-const YearlyBreakup = () => {
-  // chart color
-  const theme = useTheme();
-  const primary = theme.palette.primary.main;
-  const primarylight = '#ecf2ff';
-  const successlight = theme.palette.success.light;
+/**
+ * YearlyBreakup — Donut chart of total spending split by year.
+ * Props: data: { year, total, percentage }[]
+ */
+const YearlyBreakup = ({ data = [] }) => {
+  const theme        = useTheme();
+  const primary      = theme.palette.primary.main;
+  const primaryLight = '#ecf2ff';
+  const successLight = theme.palette.success.light;
+  const errorLight   = theme.palette.error.light;
 
-  // chart
-  const optionscolumnchart = {
+  const PALETTE = [primary, primaryLight, '#F9F9FD', '#FA896B', '#39B69A'];
+
+  const grandTotal = data.reduce((s, d) => s + d.total, 0);
+  const latestYear = data.length > 0 ? data[data.length - 1] : null;
+  const prevYear   = data.length > 1 ? data[data.length - 2] : null;
+
+  const yoyPct =
+    prevYear && prevYear.total > 0
+      ? Math.round(((latestYear.total - prevYear.total) / prevYear.total) * 100)
+      : null;
+  const isUp = yoyPct !== null && yoyPct >= 0;
+
+  const options = {
     chart: {
       type: 'donut',
-      fontFamily: "'Plus Jakarta Sans', sans-serif;",
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
       foreColor: '#adb0bb',
-      toolbar: {
-        show: false,
-      },
+      toolbar: { show: false },
       height: 155,
     },
-    colors: [primary, primarylight, '#F9F9FD'],
-    plotOptions: {
-      pie: {
-        startAngle: 0,
-        endAngle: 360,
-        donut: {
-          size: '75%',
-          background: 'transparent',
-        },
-      },
-    },
+    colors: data.map((_, i) => PALETTE[i % PALETTE.length]),
+    plotOptions: { pie: { donut: { size: '75%', background: 'transparent' } } },
     tooltip: {
       theme: theme.palette.mode === 'dark' ? 'dark' : 'light',
-      fillSeriesColor: false,
+      y: { formatter: (v) => `${v}%` },
     },
-    stroke: {
-      show: false,
-    },
-    dataLabels: {
-      enabled: false,
-    },
-    legend: {
-      show: false,
-    },
-    responsive: [
-      {
-        breakpoint: 991,
-        options: {
-          chart: {
-            width: 120,
-          },
-        },
-      },
-    ],
+    stroke:     { show: false },
+    dataLabels: { enabled: false },
+    legend:     { show: false },
   };
-  const seriescolumnchart = [38, 40, 25];
+
+  const series = data.map((d) => d.percentage);
+  const labels = data.map((d) => String(d.year));
 
   return (
-    <DashboardCard title="Yearly Breakup">
-      <Grid container spacing={3}>
-        {/* column */}
-        <Grid item xs={7} sm={7}>
-          <Typography variant="h3" fontWeight="700">
-            $36,358
-          </Typography>
-          <Stack direction="row" spacing={1} mt={1} alignItems="center">
-            <Avatar sx={{ bgcolor: successlight, width: 27, height: 27 }}>
-              <IconArrowUpLeft width={20} color="#39B69A" />
-            </Avatar>
-            <Typography variant="subtitle2" fontWeight="600">
-              +9%
+    <DashboardCard title="Yearly Spending Breakdown">
+      {data.length === 0 ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 155 }}>
+          <Typography color="text.secondary">No data yet.</Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={3}>
+          <Grid item xs={7}>
+            <Typography variant="h3" fontWeight="700">
+              {grandTotal.toLocaleString()}
             </Typography>
-            <Typography variant="subtitle2" color="textSecondary">
-              last year
-            </Typography>
-          </Stack>
-          <Stack spacing={3} mt={5} direction="row">
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Avatar
-                sx={{ width: 9, height: 9, bgcolor: primary, svg: { display: 'none' } }}
-              ></Avatar>
-              <Typography variant="subtitle2" color="textSecondary">
-                2022
-              </Typography>
+            {yoyPct !== null && (
+              <Stack direction="row" spacing={1} mt={1} alignItems="center">
+                <Avatar sx={{ bgcolor: isUp ? errorLight : successLight, width: 27, height: 27 }}>
+                  {isUp
+                    ? <IconArrowUpLeft width={20} color="#FA896B" />
+                    : <IconArrowDownRight width={20} color="#39B69A" />}
+                </Avatar>
+                <Typography variant="subtitle2" fontWeight="600">
+                  {isUp ? '+' : ''}{yoyPct}%
+                </Typography>
+                <Typography variant="subtitle2" color="textSecondary">
+                  vs {prevYear.year}
+                </Typography>
+              </Stack>
+            )}
+            <Stack mt={3} spacing={1}>
+              {data.map((d, i) => (
+                <Stack key={d.year} direction="row" spacing={1} alignItems="center">
+                  <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: PALETTE[i % PALETTE.length] }} />
+                  <Typography variant="subtitle2" color="textSecondary">
+                    {d.year} — {d.percentage}%
+                  </Typography>
+                </Stack>
+              ))}
             </Stack>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Avatar
-                sx={{ width: 9, height: 9, bgcolor: primarylight, svg: { display: 'none' } }}
-              ></Avatar>
-              <Typography variant="subtitle2" color="textSecondary">
-                2023
-              </Typography>
-            </Stack>
-          </Stack>
+          </Grid>
+          <Grid item xs={5}>
+            <Chart options={{ ...options, labels }} series={series} type="donut" height="155px" />
+          </Grid>
         </Grid>
-        {/* column */}
-        <Grid item xs={5} sm={5}>
-          <Chart
-            options={optionscolumnchart}
-            series={seriescolumnchart}
-            type="donut"
-            height="150px"
-          />
-        </Grid>
-      </Grid>
+      )}
     </DashboardCard>
   );
 };

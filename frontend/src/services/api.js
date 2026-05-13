@@ -53,6 +53,14 @@ api.interceptors.response.use(
     if (error.response?.data?.message) {
       error.message = error.response.data.message;
     }
+
+    // 401 Unauthorized — token is missing, expired or invalid.
+    // Clear the session and send the user back to the login page.
+    if (error.response?.status === 401) {
+      sessionStorage.clear();
+      window.location.href = '/auth/login';
+    }
+
     return Promise.reject(error);
   },
 );

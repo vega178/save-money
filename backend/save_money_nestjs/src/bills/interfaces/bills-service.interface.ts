@@ -17,6 +17,7 @@ export interface IBillsService {
   remove(id: number): Promise<void>;
   getBillsByUserId(userId: number): Promise<Bill[]>;
   reorderBills(orderedIds: number[]): Promise<void>;
+  getAnalytics(userId: number): Promise<any>;
 }
 
 /** Injection token for IBillsService */

@@ -117,5 +117,35 @@ export class BillsController {
   reorder(@Body() orderedIds: number[]) {
     return this.billsService.reorderBills(orderedIds);
   }
+
+  @ApiOperation({
+    summary: 'Get analytics for a user',
+    description:
+      'Returns aggregated dashboard metrics: spending by card/subscription, ' +
+      'remaining amount per month, yearly breakdown with percentages, ' +
+      'recent bills, and month-over-month spending change.',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'User ID', example: 1 })
+  @ApiResponse({
+    status: 200,
+    description: 'Analytics payload.',
+    schema: {
+      example: {
+        spendingByCard:         [{ name: 'Rappi', total: 150000 }],
+        spendingBySubscription: [{ name: 'Spotify', total: 236406 }],
+        remainingByMonth:       [{ year: 2026, month: 5, label: 'May 2026', remainingAmount: 1200000 }],
+        yearlyBreakdown:        [{ year: 2026, total: 8500000, percentage: 100 }],
+        recentBills:            [{ id: 42, name: 'Tigo Home', amount: 78802, billDate: '2026-05-01' }],
+        currentMonthTotal:      2500000,
+        previousMonthTotal:     2300000,
+        monthOverMonthPct:      9,
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Missing or invalid JWT.' })
+  @Get('users/:id/analytics')
+  getAnalytics(@Param('id', ParseIntPipe) id: number) {
+    return this.billsService.getAnalytics(id);
+  }
 }
 

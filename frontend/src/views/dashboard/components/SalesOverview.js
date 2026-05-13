@@ -1,116 +1,75 @@
 import React from 'react';
-import { Select, MenuItem } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { Typography, Box } from '@mui/material';
 import DashboardCard from '../../../components/shared/DashboardCard';
 import Chart from 'react-apexcharts';
 
+/**
+ * SalesOverview — Remaining amount per month/year bar chart.
+ * Props: data: { year, month, label, remainingAmount }[]
+ */
+const SalesOverview = ({ data = [] }) => {
+  const theme = useTheme();
+  const primary = theme.palette.primary.main;
+  const error   = theme.palette.error.main;
 
-const SalesOverview = () => {
+  const categories = data.map((d) => d.label);
+  const amounts    = data.map((d) => d.remainingAmount);
 
-    // select
-    const [month, setMonth] = React.useState('1');
+  const options = {
+    chart: {
+      type: 'bar',
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      foreColor: '#adb0bb',
+      toolbar: { show: true },
+      height: 370,
+    },
+    colors: amounts.map((v) => (v >= 0 ? primary : error)),
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '45%',
+        borderRadius: 6,
+        borderRadiusApplication: 'end',
+        distributed: true,
+      },
+    },
+    dataLabels: { enabled: false },
+    legend:     { show: false },
+    grid: { borderColor: 'rgba(0,0,0,0.1)', strokeDashArray: 3 },
+    yaxis: {
+      tickAmount: 5,
+      labels: {
+        formatter: (v) =>
+          v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M`
+          : v >= 1_000   ? `${(v / 1_000).toFixed(0)}K`
+          : String(v),
+      },
+    },
+    xaxis: {
+      categories,
+      axisBorder: { show: false },
+      labels: { rotate: -35 },
+    },
+    tooltip: {
+      theme: theme.palette.mode === 'dark' ? 'dark' : 'light',
+      y: { formatter: (v) => v.toLocaleString() },
+    },
+  };
 
-    const handleChange = (event) => {
-        setMonth(event.target.value);
-    };
+  const series = [{ name: 'Remaining Amount', data: amounts }];
 
-    // chart color
-    const theme = useTheme();
-    const primary = theme.palette.primary.main;
-    const secondary = theme.palette.secondary.main;
-
-    // chart
-    const optionscolumnchart = {
-        chart: {
-            type: 'bar',
-            fontFamily: "'Plus Jakarta Sans', sans-serif;",
-            foreColor: '#adb0bb',
-            toolbar: {
-                show: true,
-            },
-            height: 370,
-        },
-        colors: [primary, secondary],
-        plotOptions: {
-            bar: {
-                horizontal: false,
-                barHeight: '60%',
-                columnWidth: '42%',
-                borderRadius: [6],
-                borderRadiusApplication: 'end',
-                borderRadiusWhenStacked: 'all',
-            },
-        },
-
-        stroke: {
-            show: true,
-            width: 5,
-            lineCap: "butt",
-            colors: ["transparent"],
-          },
-        dataLabels: {
-            enabled: false,
-        },
-        legend: {
-            show: false,
-        },
-        grid: {
-            borderColor: 'rgba(0,0,0,0.1)',
-            strokeDashArray: 3,
-            xaxis: {
-                lines: {
-                    show: false,
-                },
-            },
-        },
-        yaxis: {
-            tickAmount: 4,
-        },
-        xaxis: {
-            categories: ['16/08', '17/08', '18/08', '19/08', '20/08', '21/08', '22/08', '23/08'],
-            axisBorder: {
-                show: false,
-            },
-        },
-        tooltip: {
-            theme: theme.palette.mode === 'dark' ? 'dark' : 'light',
-            fillSeriesColor: false,
-        },
-    };
-    const seriescolumnchart = [
-        {
-            name: 'Eanings this month',
-            data: [355, 390, 300, 350, 390, 180, 355, 390],
-        },
-        {
-            name: 'Expense this month',
-            data: [280, 250, 325, 215, 250, 310, 280, 250],
-        },
-    ];
-
-    return (
-
-        <DashboardCard title="Sales Overview" action={
-            <Select
-                labelId="month-dd"
-                id="month-dd"
-                value={month}
-                size="small"
-                onChange={handleChange}
-            >
-                <MenuItem value={1}>March 2023</MenuItem>
-                <MenuItem value={2}>April 2023</MenuItem>
-                <MenuItem value={3}>May 2023</MenuItem>
-            </Select>
-        }>
-            <Chart
-                options={optionscolumnchart}
-                series={seriescolumnchart}
-                type="bar"
-                height="370px"
-            />
-        </DashboardCard>
-    );
+  return (
+    <DashboardCard title="Remaining Amount by Month">
+      {data.length === 0 ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 370 }}>
+          <Typography color="text.secondary">No data yet.</Typography>
+        </Box>
+      ) : (
+        <Chart options={options} series={series} type="bar" height="370px" />
+      )}
+    </DashboardCard>
+  );
 };
 
 export default SalesOverview;
