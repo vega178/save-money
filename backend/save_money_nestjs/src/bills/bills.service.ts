@@ -120,4 +120,134 @@ export class BillsService implements IBillsService {
       }),
     );
   }
+
+  /**
+   * getAnalytics — aggregates all dashboard metrics from the bills table.
+   *
+   * Returned shape:
+   *  - spendingByCard        : totals per credit-card keyword group
+   *  - spendingBySubscription: totals per subscription keyword group
+   *  - remainingByMonth      : final remainingAmount per month/year bucket
+   *  - yearlyBreakdown       : total spend + % contribution per year
+   *  - recentBills           : 5 most-recent bills sorted by date desc
+   *  - currentMonthTotal     : sum of amount for the running calendar month
+   *  - previousMonthTotal    : sum of amount for the previous calendar month
+   *  - monthOverMonthPct     : % change between the two months
+   */
+  async getAnalytics(userId: number) {
+    // Reuse the enriched list (actualDebt + remainingAmount already computed)
+    const bills = await this.getBillsByUserId(userId);
+
+    // ── Keyword maps ────────────────────────────────────────────────────────
+    const CARD_KEYWORDS: Record<string, string[]> = {
+      Rappi:      ['rappi'],
+      Falabella:  ['falabella'],
+      Davivienda: ['davivienda'],
+    };
+    const SUB_KEYWORDS: Record<string, string[]> = {
+      Spotify: ['spotify'],
+      Amazon:  ['amazon'],
+      Disney:  ['disney'],
+      Netflix: ['netflix'],
+      Tigo:    ['tigo'],
+    };
+
+    const matchKeywords = (name: string, keywords: string[]): boolean =>
+      keywords.some((kw) => name.toLowerCase().includes(kw));
+
+    // ── 1. Spending by card ──────────────────────────────────────────────────
+    const spendingByCard = Object.entries(CARD_KEYWORDS).map(([label, kws]) => ({
+      name: label,
+      total: bills
+        .filter((b) => matchKeywords(b.name, kws))
+        .reduce((sum, b) => sum + (b.amount ?? 0), 0),
+    }));
+
+    // ── 2. Spending by subscription ──────────────────────────────────────────
+    const spendingBySubscription = Object.entries(SUB_KEYWORDS).map(([label, kws]) => ({
+      name: label,
+      total: bills
+        .filter((b) => matchKeywords(b.name, kws))
+        .reduce((sum, b) => sum + (b.amount ?? 0), 0),
+    }));
+
+    // ── 3. Remaining amount per month/year ───────────────────────────────────
+    // Bills are already sorted asc by date; iterate forward so the last write
+    // per key is the final cumulative remainingAmount for that period.
+    const remainingMap = new Map<string, { year: number; month: number; label: string; remainingAmount: number }>();
+    for (const bill of bills) {
+      const d   = new Date(bill.billDate);
+      const yr  = d.getFullYear();
+      const mo  = d.getMonth() + 1;
+      const key = `${yr}-${mo}`;
+      remainingMap.set(key, {
+        year:            yr,
+        month:           mo,
+        label:           `${d.toLocaleString('en-US', { month: 'short' })} ${yr}`,
+        remainingAmount: bill.remainingAmount ?? 0,
+      });
+    }
+    const remainingByMonth = Array.from(remainingMap.values()).sort(
+      (a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month,
+    );
+
+    // ── 4. Yearly breakdown ──────────────────────────────────────────────────
+    const yearTotals = new Map<number, number>();
+    for (const bill of bills) {
+      const yr = new Date(bill.billDate).getFullYear();
+      yearTotals.set(yr, (yearTotals.get(yr) ?? 0) + (bill.amount ?? 0));
+    }
+    const grandTotal = Array.from(yearTotals.values()).reduce((s, v) => s + v, 0);
+    const yearlyBreakdown = Array.from(yearTotals.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([year, total]) => ({
+        year,
+        total,
+        percentage: grandTotal > 0 ? Math.round((total / grandTotal) * 100) : 0,
+      }));
+
+    // ── 5. Recent bills ──────────────────────────────────────────────────────
+    const recentBills = [...bills]
+      .sort((a, b) => new Date(b.billDate).getTime() - new Date(a.billDate).getTime())
+      .slice(0, 5)
+      .map((b) => ({
+        id:       b.id,
+        name:     b.name,
+        amount:   b.amount,
+        billDate: b.billDate,
+      }));
+
+    // ── 6. Month-over-month ──────────────────────────────────────────────────
+    const now  = new Date();
+    const curY = now.getFullYear();
+    const curM = now.getMonth() + 1;
+    const prevY = curM === 1 ? curY - 1 : curY;
+    const prevM = curM === 1 ? 12 : curM - 1;
+
+    const sumMonth = (y: number, m: number) =>
+      bills
+        .filter((b) => {
+          const d = new Date(b.billDate);
+          return d.getFullYear() === y && d.getMonth() + 1 === m;
+        })
+        .reduce((s, b) => s + (b.amount ?? 0), 0);
+
+    const currentMonthTotal  = sumMonth(curY, curM);
+    const previousMonthTotal = sumMonth(prevY, prevM);
+    const monthOverMonthPct  =
+      previousMonthTotal > 0
+        ? Math.round(((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100)
+        : 0;
+
+    return {
+      spendingByCard,
+      spendingBySubscription,
+      remainingByMonth,
+      yearlyBreakdown,
+      recentBills,
+      currentMonthTotal,
+      previousMonthTotal,
+      monthOverMonthPct,
+    };
+  }
 }

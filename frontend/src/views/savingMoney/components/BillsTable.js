@@ -210,7 +210,9 @@ const BillsTable = () => {
   const handleEditClick = (index) => {
     const globalIndex = page * rowsPerPage + index;
     setEditIndex(globalIndex);
-    setFormData(data[globalIndex]);
+    // filteredData is what the table actually renders — always read from it,
+    // not from `data`, which has a different order/length when filters are active.
+    setFormData(filteredData[globalIndex]);
     setIsFormOpen(true);
   };
 

@@ -210,6 +210,7 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
           sx={{ mb: 2 }}
         />
         <TextField
+          //TODO: REVISAR EL CALCULO YA QUE NO SE ESTA RE CALCULANDO CUANDO SE GUARDA PARA EL SIGUIENTE MES.
           label="Total Debt"
           fullWidth
           type="text"
@@ -322,11 +323,17 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
                 Select an existing bill
               </MenuItem>
               {Array.isArray(items) &&
-                items.map((bill) => (
+                // Deduplicate by name keeping the most recent entry per bill name.
+                // A Map keyed by name is iterated in insertion order; since items
+                // arrive sorted ascending by date, each repeated name overwrites
+                // the previous one — leaving only the latest occurrence per name.
+                Array.from(
+                  new Map(items.map((b) => [b.name, b])).values()
+                ).map((bill) => (
                   <MenuItem key={bill.id} value={bill.name}>
                     {bill.name}
                   </MenuItem>
-              ))}
+                ))}
             </Select>
           </>
         )}
