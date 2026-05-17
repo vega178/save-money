@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Role } from './role.entity';
 import { Bill } from '../../bills/entities/bill.entity';
+import { Birthday } from '../../birthdays/entities/birthday.entity';
 
 // Mirrors User.java — maps to 'users' table
 @Entity('users')
@@ -36,4 +37,7 @@ export class User {
   // Mirrors @OneToMany(fetch = FetchType.LAZY, mappedBy = "user") in User.java
   @OneToMany(() => Bill, (bill) => bill.user, { lazy: true })
   bills: Promise<Bill[]>;
+
+  @OneToMany(() => Birthday, (birthday) => birthday.user, { lazy: true })
+  birthdays: Promise<Birthday[]>;
 }

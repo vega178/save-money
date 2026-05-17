@@ -23,6 +23,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useTheme } from '@mui/material/styles';
 import { Link } from 'react-router-dom';
 import { login } from '../../../services/userService';
+import { getUsers } from '../../../services/userService';
 
 const initialFormData = {
   username: '',
@@ -51,6 +52,19 @@ const AuthLogin = ({ title, subtitle, subtext }) => {
         JSON.stringify({ isAdmin: claims.isAdmin, username: response.data.username }),
       );
       sessionStorage.setItem('token', `Bearer ${token}`);
+      const mainJsonSession = sessionStorage.getItem('login');
+      const users = await getUsers();
+      if (!users || !users.data) {
+        console.error('Failed to fetch users or users data is null.');
+        return;
+      }
+
+      users.data.forEach((item) => {
+        if (item.username === JSON.parse(mainJsonSession).username) {
+          console.log('User ID set in sessionStorage: ', item.id);
+          sessionStorage.setItem('userId', item.id);
+        }
+      });
       window.location.href = '/dashboard';
     } catch (error) {
       setOpenModal(true);

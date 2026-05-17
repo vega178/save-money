@@ -15,7 +15,8 @@ const Shadow = Loadable(lazy(() => import('../views/utilities/Shadow')))
 const Error = Loadable(lazy(() => import('../views/authentication/Error')));
 const Register = Loadable(lazy(() => import('../views/authentication/Register')));
 const Login = Loadable(lazy(() => import('../views/authentication/Login')));
-const Bills = Loadable(lazy(() =>import('../views/savingMoney/BillsPage')))
+const Bills = Loadable(lazy(() => import('../views/savingMoney/BillsPage')))
+const BirthDayCalendar = Loadable(lazy(() => import('../views/birthDayCalendar/BirthDayCalendarPage')))
 
 const Router = [
   {
@@ -29,6 +30,7 @@ const Router = [
       { path: '/ui/typography', exact: true, element: <TypographyPage /> },
       { path: '/ui/shadow', exact: true, element: <Shadow /> },
       { path: '/bills', exact: true, element: <Bills /> },
+      { path: '/birthdays', exact: true, element: <BirthDayCalendar /> },
       { path: '*', element: <Navigate to="/auth/404" /> },
     ],
   },
