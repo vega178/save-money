@@ -9,6 +9,8 @@ import {
   IBirthdaysService,
   UpcomingBirthdaysResult,
 } from './interfaces/birthdays-service.interface';
+import { BirthdayPhotoStorageService } from './services/birthday-photo-storage.service';
+import { ReadStream } from 'fs';
 
 /** Returns the next occurrence of a MM-DD birthday as a Date in local time */
 function getNextOccurrence(birthDate: string): Date {
@@ -37,6 +39,8 @@ export class BirthdaysService implements IBirthdaysService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    private readonly photoStorage: BirthdayPhotoStorageService,
   ) {}
 
   async findAllByUserId(userId: number): Promise<Birthday[]> {
@@ -75,7 +79,31 @@ export class BirthdaysService implements IBirthdaysService {
 
   async remove(id: number): Promise<void> {
     const birthday = await this.findById(id);
+    if (birthday.storedPhoto) this.photoStorage.delete(birthday.storedPhoto);
     await this.birthdayRepository.remove(birthday);
+  }
+
+  async uploadPhoto(id: number, file: Express.Multer.File): Promise<Birthday> {
+    const birthday = await this.findById(id);
+    // Delete old photo from disk if it exists
+    if (birthday.storedPhoto) this.photoStorage.delete(birthday.storedPhoto);
+    const { storedName } = this.photoStorage.store(file);
+    birthday.storedPhoto = storedName;
+    return this.birthdayRepository.save(birthday);
+  }
+
+  async deletePhoto(id: number): Promise<Birthday> {
+    const birthday = await this.findById(id);
+    if (birthday.storedPhoto) {
+      this.photoStorage.delete(birthday.storedPhoto);
+      birthday.storedPhoto = null;
+      await this.birthdayRepository.save(birthday);
+    }
+    return birthday;
+  }
+
+  streamPhoto(birthday: Birthday): ReadStream {
+    return this.photoStorage.createStream(birthday.storedPhoto);
   }
 
   async getUpcoming(userId: number, days: number): Promise<UpcomingBirthdaysResult> {

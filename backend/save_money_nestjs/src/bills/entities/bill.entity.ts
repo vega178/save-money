@@ -3,9 +3,11 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { BillDocument } from './bill-document.entity';
 
 // Mirrors Bill.java — maps to 'bills' table
 @Entity('bills')
@@ -51,4 +53,8 @@ export class Bill {
   // Used for drag-and-drop reordering — mirrors `position` field in Bill.java
   @Column({ type: 'int', nullable: true })
   position: number;
+
+  /** Attached PDF / image documents for this bill. Loaded explicitly when needed. */
+  @OneToMany(() => BillDocument, (doc) => doc.bill, { cascade: true, eager: false })
+  documents: BillDocument[];
 }

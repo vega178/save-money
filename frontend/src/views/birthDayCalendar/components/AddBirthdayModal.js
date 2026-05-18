@@ -12,16 +12,21 @@ import {
 } from '@mui/material';
 import { IconX } from '@tabler/icons';
 import { useBirthdayContext } from '../context/BirthdayContext';
-import { CLOSE_ADD_MODAL, CLOSE_EDIT_MODAL } from '../context/birthdayReducer';
+import { CLOSE_ADD_MODAL, CLOSE_EDIT_MODAL, UPDATE_BIRTHDAY } from '../context/birthdayReducer';
 import useBirthdays from '../hooks/useBirthdays';
+import ImageDropzone from './ImageDropzone';
+import {
+  uploadBirthdayPhoto,
+  deleteBirthdayPhoto,
+  fetchBirthdayPhotoBlob,
+} from '../../../services/birthdayService';
 
-const EMPTY = { fullName: '', birthDate: '', notes: '', photoUrl: '' };
+const EMPTY = { fullName: '', birthDate: '', notes: '' };
 
 const AddBirthdayModal = ({ userId }) => {
   const { state, dispatch } = useBirthdayContext();
   const { addBirthday, editBirthday } = useBirthdays(userId);
 
-  // Edit mode when isEditModalOpen + editingBirthday are set
   const isEditMode = state.isEditModalOpen && Boolean(state.editingBirthday);
   const open = state.isAddModalOpen || isEditMode;
 
@@ -29,7 +34,12 @@ const AddBirthdayModal = ({ userId }) => {
   const [loading, setLoading] = React.useState(false);
   const [errors, setErrors] = React.useState({});
 
-  // Pre-fill form when opening in edit mode
+  // Photo state
+  const [pendingFile, setPendingFile] = React.useState(null);
+  const [existingBlobUrl, setExistingBlobUrl] = React.useState(null);
+  const [pendingDelete, setPendingDelete] = React.useState(false);
+
+  // Pre-fill form when opening; fetch existing photo in edit mode
   React.useEffect(() => {
     if (isEditMode && state.editingBirthday) {
       const b = state.editingBirthday;
@@ -37,16 +47,31 @@ const AddBirthdayModal = ({ userId }) => {
         fullName: b.fullName || '',
         birthDate: b.birthDate || '',
         notes: b.notes || '',
-        photoUrl: b.photoUrl || '',
       });
+      if (b.storedPhoto) {
+        fetchBirthdayPhotoBlob(b.id).then((url) => setExistingBlobUrl(url));
+      } else {
+        setExistingBlobUrl(null);
+      }
     } else if (state.isAddModalOpen) {
       setForm(EMPTY);
+      setExistingBlobUrl(null);
     }
+    setPendingFile(null);
+    setPendingDelete(false);
     setErrors({});
   }, [state.isAddModalOpen, state.isEditModalOpen, state.editingBirthday]); // eslint-disable-line
 
+  React.useEffect(() => {
+    return () => {
+      if (existingBlobUrl) URL.revokeObjectURL(existingBlobUrl);
+    };
+  }, [existingBlobUrl]);
+
   const handleClose = () => {
     setForm(EMPTY);
+    setPendingFile(null);
+    setPendingDelete(false);
     setErrors({});
     dispatch({ type: isEditMode ? CLOSE_EDIT_MODAL : CLOSE_ADD_MODAL });
   };
@@ -64,11 +89,30 @@ const AddBirthdayModal = ({ userId }) => {
 
     setLoading(true);
     try {
+      let saved;
       if (isEditMode) {
-        await editBirthday(state.editingBirthday.id, form);
+        saved = await editBirthday(state.editingBirthday.id, form);
       } else {
-        await addBirthday(form);
+        saved = await addBirthday(form);
       }
+
+      const birthdayId = saved?.id ?? state.editingBirthday?.id;
+
+      if (birthdayId) {
+        if (pendingDelete && !pendingFile) {
+          await deleteBirthdayPhoto(birthdayId);
+          // Update context so storedPhoto is cleared
+          const base = saved ?? state.editingBirthday;
+          if (base) dispatch({ type: UPDATE_BIRTHDAY, payload: { ...base, storedPhoto: null } });
+        }
+        if (pendingFile) {
+          const uploadResult = await uploadBirthdayPhoto(birthdayId, pendingFile);
+          // uploadResult is the NestJS-wrapped response: { success, data, timestamp }
+          const updated = uploadResult?.data ?? uploadResult;
+          if (updated?.id) dispatch({ type: UPDATE_BIRTHDAY, payload: updated });
+        }
+      }
+
       handleClose();
     } finally {
       setLoading(false);
@@ -115,15 +159,6 @@ const AddBirthdayModal = ({ userId }) => {
           />
 
           <TextField
-            label="Photo URL"
-            value={form.photoUrl}
-            onChange={set('photoUrl')}
-            fullWidth
-            size="small"
-            placeholder="https://..."
-          />
-
-          <TextField
             label="Notes"
             value={form.notes}
             onChange={set('notes')}
@@ -132,6 +167,20 @@ const AddBirthdayModal = ({ userId }) => {
             multiline
             rows={3}
           />
+
+          {/* Circle image dropzone */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 0.5 }}>
+            <ImageDropzone
+              pendingFile={pendingFile}
+              onChange={(file) => {
+                setPendingFile(file);
+                if (file) setPendingDelete(false);
+              }}
+              existingBlobUrl={existingBlobUrl}
+              onDelete={() => setPendingDelete(true)}
+              pendingDelete={pendingDelete}
+            />
+          </Box>
         </Box>
       </DialogContent>
 
@@ -153,3 +202,4 @@ const AddBirthdayModal = ({ userId }) => {
 };
 
 export default AddBirthdayModal;
+

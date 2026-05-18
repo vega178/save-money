@@ -11,7 +11,14 @@ import {
   HttpStatus,
   UseGuards,
   Query,
+  NotFoundException,
+  Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -19,6 +26,7 @@ import {
   ApiParam,
   ApiBearerAuth,
   ApiQuery,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { BirthdaysService } from './birthdays.service';
 import { CreateBirthdayDto } from './dto/create-birthday.dto';
@@ -95,5 +103,40 @@ export class BirthdaysController {
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.birthdaysService.remove(id);
+  }
+
+  // ── Photo endpoints ──────────────────────────────────────────────────────
+
+  @ApiOperation({ summary: 'Upload or replace birthday photo' })
+  @ApiConsumes('multipart/form-data')
+  @Post('birthdays/:id/photo')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  uploadPhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.birthdaysService.uploadPhoto(id, file);
+  }
+
+  @ApiOperation({ summary: 'Stream birthday photo' })
+  @Get('birthdays/:id/photo')
+  async streamPhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    const birthday = await this.birthdaysService.findById(id);
+    if (!birthday.storedPhoto) throw new NotFoundException('No photo uploaded for this birthday.');
+    const stream = this.birthdaysService.streamPhoto(birthday);
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    stream.pipe(res);
+  }
+
+  @ApiOperation({ summary: 'Delete birthday photo' })
+  @Delete('birthdays/:id/photo')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  deletePhoto(@Param('id', ParseIntPipe) id: number) {
+    return this.birthdaysService.deletePhoto(id);
   }
 }
