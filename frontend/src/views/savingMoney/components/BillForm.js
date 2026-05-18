@@ -12,16 +12,38 @@ import {
   Checkbox,
   Select,
   MenuItem,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  IconButton,
+  Chip,
+  Divider,
+  CircularProgress,
 } from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Delete as DeleteIcon, Visibility as VisibilityIcon, Refresh as RefreshIcon, Undo as UndoIcon } from '@mui/icons-material';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import FileDropzone from './DragAndDropBillsComponent';
-import { createBillByUserId, update } from '../../../services/billsServices';
+import {
+  createBillByUserId,
+  update,
+  uploadDocumentToBill,
+  getDocumentsByBillId,
+  deleteDocument,
+  replaceDocument,
+  openDocumentInNewTab,
+} from '../../../services/billsServices';
 
 const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
   const isNewBill = !data || !data.id;
   const [file, setFile] = useState(null);
+  // documentAction: null = add new | { type: 'replace', docId } = replace existing
+  const [documentAction, setDocumentAction] = useState(null);
+  // pendingDeletes: Set of docIds staged for deletion — committed on Save, discarded on Cancel
+  const [pendingDeletes, setPendingDeletes] = useState(new Set());
+  const [existingDocuments, setExistingDocuments] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
   const [dateValue, setDateValue] = useState(isNewBill ? new Date() : data.billDate);
   const [useExistingValue, setUseExistingValue] = useState(false);
   const [selectedExistingBill, setSelectedExistingBill] = useState('');
@@ -51,7 +73,6 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
         actualDebt: selectedBillDetails.actualDebt || 0,
         totalBalance: selectedBillDetails.totalBalance || 0,
         remainingAmount: selectedBillDetails.remainingAmount || 0,
-        gap: selectedBillDetails.gap || 0,
       });
     } else {
       setDateValue(new Date()); 
@@ -67,7 +88,6 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
     actualDebt: 0,
     totalBalance: 0,
     remainingAmount: 0,
-    gap: 0,
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -84,7 +104,6 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
         actualDebt: data.actualDebt || 0,
         totalBalance: data.totalBalance || 0,
         remainingAmount: data.remainingAmount || 0,
-        gap: data.gap || 0,
       });
     }
   };
@@ -92,6 +111,23 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
   useEffect(() => {
     updateFormData();
   }, [data]);
+
+  // Fetch existing documents whenever an existing bill is opened
+  useEffect(() => {
+    if (!isNewBill && isOpen && data?.id) {
+      setDocsLoading(true);
+      getDocumentsByBillId(data.id)
+        .then((res) => setExistingDocuments(Array.isArray(res?.data) ? res.data : []))
+        .catch(() => setExistingDocuments([]))
+        .finally(() => setDocsLoading(false));
+    } else {
+      setExistingDocuments([]);
+    }
+    // Reset ALL pending document changes whenever the dialog opens/closes or bill changes
+    setFile(null);
+    setDocumentAction(null);
+    setPendingDeletes(new Set());
+  }, [isOpen, data?.id]);
 
   const handleDateChange = (date) => {
     setDateValue(date);
@@ -119,7 +155,6 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
       'actualDebt',
       'totalBalance',
       'remainingAmount',
-      'gap',
     ];
 
     const unformattedFormValues = { ...formValues };
@@ -143,23 +178,60 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
         ...formData,
         billDate: dateValue,
       });
+
+      let savedBill;
       if (isNewBill) {
-        const createdData = await createBillByUserId(user, unformattedFormData);
-        onSave(createdData, file);
+        savedBill = await createBillByUserId(user, unformattedFormData);
       } else {
-        const updatedDataWithId = {
-          id: data.id,
-          ...unformattedFormData,
-        };
+        const updatedDataWithId = { id: data.id, ...unformattedFormData };
         await update(updatedDataWithId);
-        onSave(updatedDataWithId, file);
+        savedBill = updatedDataWithId;
       }
+
+      // Commit staged deletes
+      for (const docId of pendingDeletes) {
+        await deleteDocument(savedBill.id, docId);
+      }
+
+      // Upload or replace the document after the bill is persisted
+      if (file && savedBill?.id) {
+        if (documentAction?.type === 'replace' && documentAction?.docId) {
+          await replaceDocument(savedBill.id, documentAction.docId, file);
+        } else {
+          await uploadDocumentToBill(savedBill.id, file);
+        }
+      }
+
       setFile(null);
-      onSave(formData, file);
+      setDocumentAction(null);
+      setPendingDeletes(new Set());
+      onSave(savedBill);
       onClose();
     } catch (error) {
       console.error('Error al guardar:', error);
     }
+  };
+
+  // Stage a delete — does NOT call the API yet. Toggling again undoes the staging.
+  const handleDeleteDocument = (docId) => {
+    setPendingDeletes((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) {
+        next.delete(docId); // undo staging
+      } else {
+        next.add(docId);    // stage for deletion
+        // If this doc was staged for replace, cancel that too
+        if (documentAction?.type === 'replace' && documentAction?.docId === docId) {
+          setDocumentAction(null);
+          setFile(null);
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleReplaceDocument = (docId) => {
+    setDocumentAction({ type: 'replace', docId });
   };
 
   return (
@@ -267,6 +339,7 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
         <TextField
           label="Remaining Amount"
           disabled
+          fullWidth
           type="text"
           value={formData.remainingAmount}
           onChange={(e) => handleNumericChange(e, 'remainingAmount')}
@@ -282,31 +355,13 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
           }}
           sx={{ mb: 2 }}
         />
-        <TextField
-          //TODO: Calculo valor ingresado (Sumatoria de todos los valores ingresados por el mes actual - Obligation Average)
-          label="Gap"
-          fullWidth
-          type="text"
-          value={formData.gap}
-          onChange={(e) => handleNumericChange(e, 'gap')}
-          onFocus={() => {
-            if (formData.gap === 0) {
-              setFormData((prevData) => ({ ...prevData, gap: '' }));
-            }
-          }}
-          onBlur={() => {
-            if (formData.gap === '') {
-              setFormData((prevData) => ({ ...prevData, gap: 0 }));
-            }
-          }}
-          sx={{ mb: 2 }}
-        />
         <FormControlLabel
+          sx={{ display: 'block', mb: 1 }}
           control={
             <Checkbox
               checked={useExistingValue}
               onChange={handleUseExistingValueChange}
-              disabled={!items || items.length === 0}
+              disabled={!items || items.length === 0 || !isNewBill}
             />
           }
           label="Use Existing Bill"
@@ -337,7 +392,115 @@ const BillForm = ({ isOpen, onClose, onSave, data, items, title, user }) => {
             </Select>
           </>
         )}
-        <FileDropzone onSave={(uploadedFile) => setFile(uploadedFile)} />
+        {/* ── Existing documents (edit mode only) ─────────────────────── */}
+        {!isNewBill && (
+          <Box sx={{ mb: 2 }}>
+            <Divider sx={{ mb: 1 }} />
+            <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+              Attached Documents
+              {docsLoading && <CircularProgress size={14} sx={{ ml: 1 }} />}
+              {pendingDeletes.size > 0 && (
+                <Chip
+                  label={`${pendingDeletes.size} pending delete${pendingDeletes.size > 1 ? 's' : ''}`}
+                  color="error"
+                  size="small"
+                  variant="outlined"
+                  sx={{ ml: 1, fontSize: '0.65rem' }}
+                />
+              )}
+            </Typography>
+            {!docsLoading && existingDocuments.length === 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                No documents attached yet.
+              </Typography>
+            )}
+            {existingDocuments.length > 0 && (
+              <List dense disablePadding>
+                {existingDocuments.map((doc) => {
+                  const stagedForDelete = pendingDeletes.has(doc.id);
+                  return (
+                    <ListItem
+                      key={doc.id}
+                      disablePadding
+                      sx={{
+                        mb: 0.5,
+                        border: `1px solid ${stagedForDelete ? '#f44336' : '#e0e0e0'}`,
+                        borderRadius: 1,
+                        px: 1,
+                        opacity: stagedForDelete ? 0.5 : 1,
+                        background: stagedForDelete ? '#fff5f5' : undefined,
+                      }}
+                    >
+                      <ListItemText
+                        primary={doc.originalName}
+                        secondary={
+                          stagedForDelete
+                            ? 'Will be deleted on Save — click ↩ to undo'
+                            : `${(doc.sizeBytes / 1024).toFixed(1)} KB · ${new Date(doc.uploadedAt).toLocaleDateString()}`
+                        }
+                        primaryTypographyProps={{
+                          variant: 'body2',
+                          noWrap: true,
+                          style: stagedForDelete ? { textDecoration: 'line-through' } : {},
+                        }}
+                        secondaryTypographyProps={{ variant: 'caption', color: stagedForDelete ? 'error' : 'text.secondary' }}
+                      />
+                      <ListItemSecondaryAction>
+                        {/* View — disabled when staged for delete */}
+                        <IconButton
+                          size="small"
+                          title="View"
+                          disabled={stagedForDelete}
+                          onClick={() => openDocumentInNewTab(data.id, doc.id)}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                        {/* Replace — disabled when staged for delete */}
+                        <IconButton
+                          size="small"
+                          title="Replace"
+                          disabled={stagedForDelete}
+                          color={documentAction?.docId === doc.id ? 'primary' : 'default'}
+                          onClick={() => handleReplaceDocument(doc.id)}
+                        >
+                          <RefreshIcon fontSize="small" />
+                        </IconButton>
+                        {/* Delete / Undo — toggles staging */}
+                        <IconButton
+                          size="small"
+                          title={stagedForDelete ? 'Undo delete' : 'Delete'}
+                          onClick={() => handleDeleteDocument(doc.id)}
+                        >
+                          {stagedForDelete
+                            ? <UndoIcon fontSize="small" color="warning" />
+                            : <DeleteIcon fontSize="small" color="error" />}
+                        </IconButton>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            )}
+            <Divider sx={{ mt: 1, mb: 2 }} />
+          </Box>
+        )}
+
+        {/* ── Dropzone label changes when in replace mode ───────────────── */}
+        {documentAction?.type === 'replace' && (
+          <Chip
+            label={`Replacing: ${existingDocuments.find((d) => d.id === documentAction.docId)?.originalName ?? 'document'}`}
+            onDelete={() => { setDocumentAction(null); setFile(null); }}
+            color="primary"
+            variant="outlined"
+            size="small"
+            sx={{ mb: 1 }}
+          />
+        )}
+
+        <FileDropzone
+          onSave={(uploadedFile) => setFile(uploadedFile)}
+          pendingFile={file}
+        />
       </DialogContent>
       <DialogActions sx={{ display: 'flex', justifyContent: 'center' }}>
         <Button variant="contained" color="error" onClick={onClose}>

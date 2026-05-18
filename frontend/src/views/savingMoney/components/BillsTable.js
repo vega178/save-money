@@ -15,8 +15,8 @@ import {
   DialogContent,
   TextField,
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, DragIndicator as DragIndicatorIcon } from '@mui/icons-material';
-import { MenuItem, Select } from '@mui/material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, DragIndicator as DragIndicatorIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
+import { IconButton, MenuItem, Select } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import { format } from 'date-fns';
@@ -25,6 +25,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import DashboardCard from '../../../components/shared/DashboardCard';
 import BillForm from './BillForm';
+import BillDetailsDialog from './BillDetailsDialog';
 import {
   getBillsByUserId,
   createBillByUserId,
@@ -34,7 +35,7 @@ import {
 } from '../../../services/billsServices';
 import { getUsers } from '../../../services/userService';
 
-const SortableTableRow = ({ row, index, editIndex, adding, handleCheckboxChange, handleEditClick, handleDeleteClick }) => {
+const SortableTableRow = ({ row, index, editIndex, adding, handleCheckboxChange, handleEditClick, handleDeleteClick, handleViewClick }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: String(row.id) });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -68,7 +69,12 @@ const SortableTableRow = ({ row, index, editIndex, adding, handleCheckboxChange,
       <TableCell style={{ whiteSpace: 'pre-line' }}>{row.actualDebt.toLocaleString()}</TableCell>
       <TableCell style={{ whiteSpace: 'pre-line' }}>{row.totalBalance.toLocaleString()}</TableCell>
       <TableCell style={{ whiteSpace: 'pre-line' }}>{row.remainingAmount.toLocaleString()}</TableCell>
-      <TableCell style={{ whiteSpace: 'pre-line' }}>{row.gap.toLocaleString()}</TableCell>
+      {/* Eye-button column — replaces the old GAP column */}
+      <TableCell align="center">
+        <IconButton size="small" onClick={() => handleViewClick(row)}>
+          <VisibilityIcon fontSize="small" />
+        </IconButton>
+      </TableCell>
       <TableCell>
         <>
           <Button startIcon={<EditIcon />} onClick={() => handleEditClick(index)} />
@@ -89,6 +95,8 @@ const BillsTable = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [adding, setAdding] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [detailsBill, setDetailsBill] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const mainJsonSession = sessionStorage.getItem('login');
   const jsonSession = JSON.parse(mainJsonSession);
   const [filteredData, setFilteredData] = useState([]);
@@ -107,7 +115,6 @@ const BillsTable = () => {
     actualDebt: '',
     totalBalance: '',
     remainingAmount: '',
-    gap: '',
   });
 
   const fetchData = async () => {
@@ -218,7 +225,6 @@ const BillsTable = () => {
       actualDebt: '',
       totalBalance: '',
       remainingAmount: '',
-      gap: '',
     });
     setIsFormOpen(true);
   };
@@ -373,6 +379,11 @@ const BillsTable = () => {
     return lastItem.remainingAmount;
   };
 
+  const handleViewClick = (row) => {
+    setDetailsBill(row);
+    setIsDetailsOpen(true);
+  };
+
 
   return (
     <DashboardCard>
@@ -523,11 +534,8 @@ const BillsTable = () => {
                         REMAINING AMOUNT
                       </Typography>
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="subtitle2" fontWeight={600}>
-                        GAP
-                      </Typography>
-                    </TableCell>
+                    {/* Empty header for the eye-button column */}
+                    <TableCell />
                     <TableCell>
                       <Button
                         style={{ color: 'red' }}
@@ -556,6 +564,7 @@ const BillsTable = () => {
                             handleCheckboxChange={handleCheckboxChange}
                             handleEditClick={handleEditClick}
                             handleDeleteClick={handleDeleteClick}
+                            handleViewClick={handleViewClick}
                           />
                         ))}
                     </SortableContext>
@@ -588,8 +597,12 @@ const BillsTable = () => {
           />
         </DialogContent>
       </Dialog>
-      <Dialog open={isSessionTimeoutModalOpen} onClose={() => {}}>
-        <DialogContent>
+      <BillDetailsDialog
+        isOpen={isDetailsOpen}
+        onClose={() => { setIsDetailsOpen(false); setDetailsBill(null); }}
+        bill={detailsBill}
+      />
+      <Dialog open={isSessionTimeoutModalOpen} onClose={() => {}}>        <DialogContent>
           <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
             Session Timeout
           </Typography>

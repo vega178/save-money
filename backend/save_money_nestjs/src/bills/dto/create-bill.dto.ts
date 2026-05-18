@@ -41,12 +41,6 @@ export class CreateBillDto {
   @IsOptional()
   remainingAmount?: number;
 
-  @ApiPropertyOptional({ example: 0, description: 'Gap amount' })
-  @Type(() => Number)
-  @IsNumber()
-  @IsOptional()
-  gap?: number;
-
   @ApiPropertyOptional({ example: false, description: 'Whether the bill has been checked/paid' })
   @IsBoolean()
   @IsOptional()

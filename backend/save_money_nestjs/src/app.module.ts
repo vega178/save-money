@@ -9,6 +9,7 @@ import { BirthdaysModule } from './birthdays/birthdays.module';
 import { User } from './users/entities/user.entity';
 import { Role } from './users/entities/role.entity';
 import { Bill } from './bills/entities/bill.entity';
+import { BillDocument } from './bills/entities/bill-document.entity';
 import { Birthday } from './birthdays/entities/birthday.entity';
 import { DatabaseSeeder } from './database/database.seeder';
 
@@ -32,7 +33,7 @@ import { DatabaseSeeder } from './database/database.seeder';
         username: config.get('database.username'),
         password: config.get('database.password'),
         database: config.get('database.database'),
-        entities: [User, Role, Bill, Birthday],
+        entities: [User, Role, Bill, BillDocument, Birthday],
         synchronize: true, // equivalent to ddl-auto=update — disable in production
         logging: process.env.NODE_ENV !== 'production',
       }),

@@ -31,6 +31,10 @@ export class Birthday {
   @Column({ name: 'photo_url', length: 500, nullable: true })
   photoUrl: string;
 
+  /** Filename of a locally-uploaded photo (UUID-named, stored in uploads/birthdays/). */
+  @Column({ name: 'stored_photo', length: 260, nullable: true })
+  storedPhoto: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

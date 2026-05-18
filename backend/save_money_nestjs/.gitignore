@@ -27,3 +27,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 /dist/
+
+# Uploaded bill documents — keep directory structure but ignore actual files
+/uploads/bills/*
+!/uploads/bills/.gitkeep
+
+/uploads/birthdays/*
+!/uploads/birthdays/.gitkeep

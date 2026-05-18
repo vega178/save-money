@@ -1,51 +1,46 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Typography } from '@mui/material';
-import { pdfjs } from 'react-pdf';
 
-const FileDropzone = ({ onSave }) => {
-  const [filePreview, setFilePreview] = useState(null);
-  const [url, setUrl] = useState('');
+/**
+ * FileDropzone — accepts PDF and image files.
+ *
+ * NO longer uploads to a separate Express server.
+ * It only buffers the selected File object locally and passes it up via
+ * onSave(file) so the parent (BillForm) can upload it to the NestJS backend
+ * after the bill has been created/updated (billId is required for the upload).
+ *
+ * Props:
+ *   onSave(file)   — called with the File object when a file is dropped/selected
+ *   pendingFile    — currently staged File (passed back down so the preview
+ *                    survives parent re-renders without losing the selection)
+ */
+const FileDropzone = ({ onSave, pendingFile }) => {
+  const [localUrl, setLocalUrl] = useState('');
 
-  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
+  // Sync the local preview URL whenever the parent updates pendingFile
+  useEffect(() => {
+    if (pendingFile) {
+      const objectUrl = URL.createObjectURL(pendingFile);
+      setLocalUrl(objectUrl);
+      // Revoke the previous URL when the component unmounts or file changes
+      return () => URL.revokeObjectURL(objectUrl);
+    } else {
+      setLocalUrl('');
+    }
+  }, [pendingFile]);
 
-  const onDrop = useCallback(async (acceptedFiles) => {
+  const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
-
-    if (!file) {
-      return;
-    }
-
-    const fileReader = new FileReader();
-
-    fileReader.onload = function () {
-      setFilePreview(fileReader.result);
-      setUrl(URL.createObjectURL(file));
-    };
-
-    fileReader.readAsDataURL(file);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch('http://localhost:3001/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-      console.log(data.message);
-
-      onSave(file, fileReader.result);
-    } catch (error) {
-      console.error('Error al cargar el archivo:', error);
-    }
+    if (!file) return;
+    // Pass the raw File up; BillForm will upload it to /api/bills/:id/documents
+    onSave(file);
   }, [onSave]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    accept: '.pdf, .xlsx',
+    accept: { 'application/pdf': ['.pdf'], 'image/*': ['.jpg', '.jpeg', '.png', '.gif'] },
     onDrop,
+    multiple: false,
   });
 
   return (
@@ -53,36 +48,29 @@ const FileDropzone = ({ onSave }) => {
       <input {...getInputProps()} />
       <Typography variant="body1" align="center" sx={isDragActive ? activeTextStyles : textStyles}>
         {isDragActive
-          ? 'Drop the files here ...'
-          : "Drag 'n' drop some files here, or click to select files"}
+          ? 'Drop the file here ...'
+          : pendingFile
+          ? `Selected: ${pendingFile.name} — drop a new file to replace it`
+          : "Drag 'n' drop a PDF or image, or click to select"}
       </Typography>
-      {filePreview && (
-        <div style={{ height: '550px' }}>
-          {url ? (
-            <iframe title="PDF Preview" src={url} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-          ) : (
-            <img src={filePreview} alt="File Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-          )}
+      {localUrl && (
+        <div style={{ height: '550px', marginTop: '12px' }}>
+          <iframe title="Preview" src={localUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
       )}
     </div>
   );
 };
 
-const textStyles = {
-  margin: '0',
-};
-
-const activeTextStyles = {
-  color: '#2196F3',
-};
-
+const textStyles = { margin: '0' };
+const activeTextStyles = { color: '#2196F3' };
 const dropzoneStyles = {
   border: '2px dashed #aaa',
   padding: '20px',
   textAlign: 'center',
   width: '100%',
   height: '100%',
+  cursor: 'pointer',
 };
 
 export default FileDropzone;

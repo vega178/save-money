@@ -43,12 +43,6 @@ export class UpdateBillDto {
   @IsOptional()
   remainingAmount?: number;
 
-  @ApiPropertyOptional({ example: 0 })
-  @Type(() => Number)
-  @IsNumber()
-  @IsOptional()
-  gap?: number;
-
   @ApiPropertyOptional({ example: false })
   @IsBoolean()
   @IsOptional()

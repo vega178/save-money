@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ReadStream } from 'fs';
 import { Bill } from './entities/bill.entity';
+import { BillDocument } from './entities/bill-document.entity';
 import { User } from '../users/entities/user.entity';
 import { CreateBillDto } from './dto/create-bill.dto';
 import { UpdateBillDto } from './dto/update-bill.dto';
 import { IBillsService } from './interfaces/bills-service.interface';
+import { FileStorageService } from './services/file-storage.service';
 
 // Mirrors BillServiceImpl.java — full port of all methods
 @Injectable()
@@ -16,6 +19,11 @@ export class BillsService implements IBillsService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    @InjectRepository(BillDocument)
+    private readonly documentRepository: Repository<BillDocument>,
+
+    private readonly fileStorageService: FileStorageService,
   ) {}
 
   // Mirrors BillServiceImpl.findAll()
@@ -63,7 +71,6 @@ export class BillsService implements IBillsService {
     if (dto.actualDebt !== undefined) bill.actualDebt = dto.actualDebt;
     if (dto.totalBalance !== undefined) bill.totalBalance = dto.totalBalance;
     if (dto.remainingAmount !== undefined) bill.remainingAmount = dto.remainingAmount;
-    if (dto.gap !== undefined) bill.gap = dto.gap;
     if (dto.isChecked !== undefined) bill.isChecked = dto.isChecked;
 
     return this.billRepository.save(bill);
@@ -119,6 +126,86 @@ export class BillsService implements IBillsService {
         }
       }),
     );
+  }
+
+  // ── Document management ───────────────────────────────────────────────────────────────────────────
+
+  /** Return all documents linked to a bill. */
+  async getDocumentsByBillId(billId: number): Promise<BillDocument[]> {
+    await this.findById(billId); // ensure bill exists
+    return this.documentRepository.find({ where: { bill: { id: billId } } });
+  }
+
+  /**
+   * Validate, store the file on disk, and persist metadata to bill_documents.
+   * Call this AFTER the bill has been created so billId is available.
+   */
+  async attachDocument(
+    billId: number,
+    file: Express.Multer.File,
+  ): Promise<BillDocument> {
+    const bill = await this.findById(billId);
+    const { storedName } = this.fileStorageService.store(file);
+
+    const doc = this.documentRepository.create({
+      bill,
+      originalName: file.originalname,
+      storedName,
+      mimeType: file.mimetype,
+      sizeBytes: file.size,
+    });
+    return this.documentRepository.save(doc);
+  }
+
+  /**
+   * Replace an existing document: delete the old file from disk, write the new
+   * one, and update the DB row — keeping the same document ID.
+   */
+  async replaceDocument(
+    billId: number,
+    docId: number,
+    file: Express.Multer.File,
+  ): Promise<BillDocument> {
+    const doc = await this.documentRepository.findOne({
+      where: { id: docId, bill: { id: billId } },
+    });
+    if (!doc) throw new NotFoundException(`Document ${docId} not found on bill ${billId}`);
+
+    // Remove old file before writing the new one
+    this.fileStorageService.delete(doc.storedName);
+
+    const { storedName } = this.fileStorageService.store(file);
+    doc.originalName = file.originalname;
+    doc.storedName   = storedName;
+    doc.mimeType     = file.mimetype;
+    doc.sizeBytes    = file.size;
+    return this.documentRepository.save(doc);
+  }
+
+  /** Delete a document record and its file from disk. */
+  async removeDocument(billId: number, docId: number): Promise<void> {
+    const doc = await this.documentRepository.findOne({
+      where: { id: docId, bill: { id: billId } },
+    });
+    if (!doc) throw new NotFoundException(`Document ${docId} not found on bill ${billId}`);
+    this.fileStorageService.delete(doc.storedName);
+    await this.documentRepository.remove(doc);
+  }
+
+  /**
+   * Open a read-stream for a document file.
+   * The controller pipes this straight into the HTTP response.
+   */
+  async streamDocument(
+    billId: number,
+    docId: number,
+  ): Promise<{ stream: ReadStream; doc: BillDocument }> {
+    const doc = await this.documentRepository.findOne({
+      where: { id: docId, bill: { id: billId } },
+    });
+    if (!doc) throw new NotFoundException(`Document ${docId} not found on bill ${billId}`);
+    const stream = this.fileStorageService.createStream(doc.storedName);
+    return { stream, doc };
   }
 
   /**

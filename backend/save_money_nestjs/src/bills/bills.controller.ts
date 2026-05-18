@@ -10,7 +10,13 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Res,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -18,6 +24,7 @@ import {
   ApiParam,
   ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { BillsService } from './bills.service';
 import { CreateBillDto } from './dto/create-bill.dto';
@@ -118,8 +125,7 @@ export class BillsController {
     return this.billsService.reorderBills(orderedIds);
   }
 
-  @ApiOperation({
-    summary: 'Get analytics for a user',
+  @ApiOperation({ summary: 'Get analytics for a user',
     description:
       'Returns aggregated dashboard metrics: spending by card/subscription, ' +
       'remaining amount per month, yearly breakdown with percentages, ' +
@@ -146,6 +152,79 @@ export class BillsController {
   @Get('users/:id/analytics')
   getAnalytics(@Param('id', ParseIntPipe) id: number) {
     return this.billsService.getAnalytics(id);
+  }
+
+  // ── Document endpoints ──────────────────────────────────────────────────────────
+
+  @ApiOperation({ summary: 'List all documents for a bill' })
+  @ApiParam({ name: 'billId', type: Number })
+  @ApiResponse({ status: 200, description: 'Array of document metadata.' })
+  @Get('bills/:billId/documents')
+  getDocuments(@Param('billId', ParseIntPipe) billId: number) {
+    return this.billsService.getDocumentsByBillId(billId);
+  }
+
+  @ApiOperation({ summary: 'Upload a document and attach it to a bill' })
+  @ApiParam({ name: 'billId', type: Number })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiResponse({ status: 201, description: 'Document uploaded and linked.' })
+  @Post('bills/:billId/documents')
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  uploadDocument(
+    @Param('billId', ParseIntPipe) billId: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.billsService.attachDocument(billId, file);
+  }
+
+  @ApiOperation({ summary: 'Replace an existing document on a bill' })
+  @ApiParam({ name: 'billId', type: Number })
+  @ApiParam({ name: 'docId',  type: Number })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiResponse({ status: 200, description: 'Document replaced.' })
+  @Put('bills/:billId/documents/:docId')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  replaceDocument(
+    @Param('billId', ParseIntPipe) billId: number,
+    @Param('docId',  ParseIntPipe) docId:  number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.billsService.replaceDocument(billId, docId, file);
+  }
+
+  @ApiOperation({ summary: 'Stream / view a document (inline in browser)' })
+  @ApiParam({ name: 'billId', type: Number })
+  @ApiParam({ name: 'docId',  type: Number })
+  @ApiResponse({ status: 200, description: 'File stream.' })
+  @Get('bills/:billId/documents/:docId/view')
+  async viewDocument(
+    @Param('billId', ParseIntPipe) billId: number,
+    @Param('docId',  ParseIntPipe) docId:  number,
+    @Res() res: Response,
+  ) {
+    const { stream, doc } = await this.billsService.streamDocument(billId, docId);
+    res.set({
+      'Content-Type': doc.mimeType,
+      'Content-Disposition': `inline; filename="${doc.originalName}"`,
+      'Content-Length': String(doc.sizeBytes),
+    });
+    stream.pipe(res);
+  }
+
+  @ApiOperation({ summary: 'Delete a document from a bill' })
+  @ApiParam({ name: 'billId', type: Number })
+  @ApiParam({ name: 'docId',  type: Number })
+  @ApiResponse({ status: 204, description: 'Document deleted.' })
+  @Delete('bills/:billId/documents/:docId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeDocument(
+    @Param('billId', ParseIntPipe) billId: number,
+    @Param('docId',  ParseIntPipe) docId:  number,
+  ) {
+    return this.billsService.removeDocument(billId, docId);
   }
 }
 
