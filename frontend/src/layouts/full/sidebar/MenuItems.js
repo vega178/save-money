@@ -1,5 +1,5 @@
 import {
-  IconLayoutDashboard,  IconReceipt
+  IconLayoutDashboard,  IconReceipt, IconCalendar,
 } from '@tabler/icons';
 
 import { uniqueId } from 'lodash';
@@ -24,7 +24,12 @@ const Menuitems = [
     title: 'Bills',
     icon: IconReceipt,
     href: '/bills',
-  }
+  },
+  {    id: uniqueId(),
+    title: 'Birthdays',
+    icon: IconCalendar,
+    href: '/birthdays',
+  },
 ];
 
 export default Menuitems;

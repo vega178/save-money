@@ -112,18 +112,6 @@ const BillsTable = () => {
 
   const fetchData = async () => {
     try {
-      const users = await getUsers();
-      if (!users || !users.data) {
-        console.error('Failed to fetch users or users data is null.');
-        return;
-      }
-
-      users.data.forEach((item) => {
-        if (item.username === jsonSession.username) {
-          sessionStorage.setItem('userId', item.id);
-        }
-      });
-
       const userId = sessionStorage.getItem('userId');
       if (!userId) {
         console.error('User ID not found in session storage.');
