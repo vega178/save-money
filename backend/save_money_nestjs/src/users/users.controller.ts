@@ -52,14 +52,9 @@ export class UsersController {
     return this.usersService.findById(id);
   }
 
-  @ApiBearerAuth('JWT')
-  @ApiOperation({ summary: 'Create a user', description: 'Requires ROLE_ADMIN. Password is BCrypt-hashed automatically. ROLE_USER is assigned by default.' })
+  @ApiOperation({ summary: 'Create a user', description: 'Public endpoint — no token required. Password is BCrypt-hashed automatically. ROLE_USER is assigned by default.' })
   @ApiResponse({ status: 201, description: 'User created.', type: UserResponseDto })
-  @ApiResponse({ status: 401, description: 'Missing or invalid JWT.' })
-  @ApiResponse({ status: 403, description: 'Insufficient role.' })
   @ApiResponse({ status: 409, description: 'Username or email already in use.' })
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ROLE_ADMIN')
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateUserDto) {

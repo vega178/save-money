@@ -54,9 +54,12 @@ api.interceptors.response.use(
       error.message = error.response.data.message;
     }
 
-    // 401 Unauthorized — token is missing, expired or invalid.
-    // Clear the session and send the user back to the login page.
-    if (error.response?.status === 401) {
+    // 401 Unauthorized — only auto-redirect when it's NOT a login/register attempt.
+    // If the login itself returns 401 we want the UI to show the error dialog,
+    // not silently bounce the user to /auth/login again.
+    const url = error.config?.url ?? '';
+    const isAuthAttempt = url.includes('/auth/login') || url.includes('/users');
+    if (error.response?.status === 401 && !isAuthAttempt) {
       sessionStorage.clear();
       window.location.href = '/auth/login';
     }

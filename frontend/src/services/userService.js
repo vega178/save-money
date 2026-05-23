@@ -20,12 +20,7 @@ export const getUsers = async () => {
 }
 
 export const createUser = async({ username, email, password }) => {
-  try {
-    return await api.post('/users', { username, email, password });
-  } catch (error) {
-    console.log(error);
-  }
-  return undefined;
+  return await api.post('/users', { username, email, password });
 }
 
 /**
@@ -34,12 +29,7 @@ export const createUser = async({ username, email, password }) => {
  * The response shape { token, username, message } is identical.
  */
 export const login = async({ username, password }) => {
-  try {
-    return await api.post('/auth/login', { username, password });
-  } catch (error) {
-    console.log(error);
-  }
-  return undefined;
+  return await api.post('/auth/login', { username, password });
 }
 
 export const updateUser = async({ id, username, email }) => {

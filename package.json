@@ -1,0 +1,29 @@
+{
+  "name": "save-money-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Save Money – Docker dev environment scripts configuration",
+  "scripts": {
+    "docker:up":        "docker compose up",
+    "docker:up:build":  "docker compose up --build",
+    "docker:up:detach": "docker compose up -d",
+    "docker:down":      "docker compose down",
+    "docker:reset":     "bash scripts/safe-reset.sh",
+    "docker:restart":   "docker compose restart",
+    "docker:rebuild":   "docker compose down && docker compose up --build",
+    "docker:logs":      "docker compose logs -f",
+    "docker:logs:be":   "docker compose logs -f backend",
+    "docker:logs:fe":   "docker compose logs -f frontend",
+    "docker:logs:db":   "docker compose logs -f mysql",
+    "docker:shell:be":  "docker compose exec backend sh",
+    "docker:shell:fe":  "docker compose exec frontend sh",
+    "docker:shell:db":  "docker compose exec mysql mysql -u appuser -p db_save_money",
+    "docker:status":    "docker compose ps",
+
+    "docker:db:backup":       "bash scripts/backup-db.sh",
+    "docker:db:restore":      "bash scripts/restore-db.sh",
+    "docker:db:cron":         "bash scripts/setup-cron.sh",
+    "docker:db:cron:remove":  "bash scripts/setup-cron.sh remove",
+    "docker:db:list":         "ls -lht backups/db/*.sql.gz 2>/dev/null || echo 'No backups found'"
+  }
+}

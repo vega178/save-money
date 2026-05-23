@@ -43,9 +43,13 @@ export class UsersService implements IUsersService {
   }
 
   // Used internally by AuthService — returns hashed password too
-  async findByUsername(username: string): Promise<User | null> {
+  // Accepts either a username or an email so users can log in with either.
+  async findByUsername(usernameOrEmail: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { username },
+      where: [
+        { username: usernameOrEmail },
+        { email: usernameOrEmail },
+      ],
       relations: ['roles'],
     });
   }
