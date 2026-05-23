@@ -36,6 +36,7 @@ const AuthLogin = ({ title, subtitle, subtext }) => {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [openModal, setOpenModal] = useState(false);
+  const [loginError, setLoginError] = useState('');
   const handleClickShowPassword = () => setShowPassword((show) => !show);
   const handleMouseDownPassword = (event) => {
     event.preventDefault();
@@ -67,6 +68,8 @@ const AuthLogin = ({ title, subtitle, subtext }) => {
       });
       window.location.href = '/dashboard';
     } catch (error) {
+      const msg = error?.message || 'Incorrect username or password. Please try again.';
+      setLoginError(msg);
       setOpenModal(true);
       console.error('Login error :', error);
     }
@@ -93,7 +96,7 @@ const AuthLogin = ({ title, subtitle, subtext }) => {
             htmlFor="username"
             mb="5px"
           >
-            Username
+            Username or Email
           </Typography>
           <TextField
             id="username"
@@ -172,7 +175,7 @@ const AuthLogin = ({ title, subtitle, subtext }) => {
       >
         <DialogTitle id="responsive-dialog-title">{'Sign In Failed'}</DialogTitle>
         <DialogContent>
-          <DialogContentText>Incorrect username or password. Please try again!!.</DialogContentText>
+          <DialogContentText>{loginError || 'Incorrect username or password. Please try again.'}</DialogContentText>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center' }}>
           <Button autoFocus onClick={handleClose} variant="contained" color="error">

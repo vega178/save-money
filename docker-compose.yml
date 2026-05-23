@@ -1,0 +1,116 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml  –  Local development stack
+#
+# Services:
+#   mysql    → MySQL 8 database          (host port 3307 → container 3306)
+#   backend  → NestJS API with hot-reload (host port 8080 → container 8080)
+#   frontend → React dev server          (host port 3000 → container 3000)
+#
+# Usage:
+#   docker compose up            # start everything (build if needed)
+#   docker compose up --build    # rebuild images and start
+#   docker compose down          # stop containers — DATA IS PRESERVED
+#   docker compose down -v       # ⚠️  DANGER: also deletes MySQL data volume
+#   docker compose logs -f       # tail all logs
+#   docker compose logs -f backend  # tail a single service
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── MySQL 8 ────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: save_money_mysql
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3307:3306"       # expose on 3307 to avoid conflicts with a local MySQL
+    volumes:
+      - mysql_data:/var/lib/mysql                           # persistent data
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro  # SQL seed scripts
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── NestJS Backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend/save_money_nestjs
+      dockerfile: Dockerfile
+      target: development       # uses the "development" stage for hot-reload
+    container_name: save_money_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Override DB_HOST so the backend resolves the mysql service name
+      DB_HOST: mysql
+      DB_PORT: "3306"
+    ports:
+      - "8080:8080"
+      - "9229:9229"   # Node.js debug port (optional)
+    volumes:
+      # Mount source for hot-reload – node_modules stays inside the container
+      - ./backend/save_money_nestjs/src:/app/src:delegated
+      - ./backend/save_money_nestjs/test:/app/test:delegated
+      - backend_uploads:/app/uploads   # persist uploaded files
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - app_network
+
+  # ── React Frontend ─────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development       # uses the "development" stage for hot-reload
+    container_name: save_money_frontend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # The browser fetches from the HOST, so use localhost not the service name
+      REACT_APP_API_URL: http://localhost:8080/api
+      # Bind the CRA dev server to all interfaces so Docker port mapping works
+      HOST: "0.0.0.0"
+      # Override PORT – the root .env sets PORT=8080 for the backend, but CRA
+      # also reads PORT to choose its listen port, so pin it to 3000 here.
+      PORT: "3000"
+      # Enable file-system polling so hot-reload works on macOS bind mounts
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source for hot-reload – node_modules stays inside the container
+      - ./frontend/src:/app/src:delegated
+      - ./frontend/public:/app/public:delegated
+    depends_on:
+      - backend
+    networks:
+      - app_network
+
+# ── Named Volumes ─────────────────────────────────────────────────────────────
+volumes:
+  mysql_data:
+    driver: local
+  backend_uploads:
+    driver: local
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  app_network:
+    driver: bridge

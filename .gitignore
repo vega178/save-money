@@ -1,0 +1,9 @@
+# Docker environment – never commit real secrets
+.env
+
+# Database backups
+backups/
+
+# OS
+.DS_Store
+Thumbs.db
